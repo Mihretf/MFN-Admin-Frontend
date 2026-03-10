@@ -54,7 +54,8 @@
 
 - `POST /api/upload/image` (Super/Regional Admin)
   - Content-Type: `multipart/form-data`
-  - File field: any key name works
+  - File field: `file`
+  - Optional metadata fields: `title`, `type`, `description`, `region_id` (as query param)
   - Returns: `{ asset: { secure_url } }`
 
 - `POST /api/upload/video` (Super/Regional Admin)
@@ -108,6 +109,9 @@
       "region_id": "string",
       "image_url": "string",
       "caption?": "string",
+      "title?": "string",
+      "type?": "string",
+      "description?": "string",
       "church_id?": "string",
       "location_link?": "string",
       "expires_in_days?": number

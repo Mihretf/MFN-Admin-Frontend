@@ -24,27 +24,20 @@ const handleLogin = async (e: React.FormEvent) => {
 
   try {
     const response = await authAPI.login(email, password);
-    // --- ADD THIS LINE HERE ---
-      console.log("DEBUG: Full Backend Response:", response.data);
-      console.log("DEBUG: User Object:", response.data.user);
-      console.log("DEBUG: User Role is:", response.data.user?.role);
-      // --------------------------
     const { token, user } = response.data;
 
-    const decodedUser: any = jwtDecode(token);
-    console.log("Decoded Role:", decodedUser.role);
-
-    dispatch(setCredentials({token, user: decodedUser}));
+    // Use the user from response.data instead of JWT decode, as it should include region_id
+    dispatch(setCredentials({token, user}));
     toast.success("Login Sucessful!")
     
     // dispatch(setCredentials({ token, user }));
     // toast.success('Login successful!');
 
     // Redirect based on role
-    if (decodedUser.role === 'super_admin' || decodedUser.role === 'super') {
-      navigate('/super-admin/dashboard'); // Or whatever your super admin route is named
+    if (user.role === 'super_admin' || user.role === 'super') {
+      navigate('/dashboard');
     } else {
-      navigate('/dashboard'); // Keep this for regional admins
+      navigate('/dashboard');
     }
 
   } catch (error: any) {

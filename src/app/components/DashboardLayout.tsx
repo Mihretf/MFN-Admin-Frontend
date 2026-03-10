@@ -27,8 +27,9 @@ export function DashboardLayout() {
           { to: '/dashboard/invitations', icon: Users, label: 'Invitations' },
           { to: '/dashboard/blogs', icon: BookOpen, label: 'Blogs' },
         ]
-      : []),
-    { to: '/dashboard/posts', icon: FileText, label: 'Services' },
+      : [
+          { to: '/dashboard/posts', icon: FileText, label: 'Services' },
+        ]),
     { to: '/dashboard/gallery', icon: Image, label: 'Gallery' },
   ];
 

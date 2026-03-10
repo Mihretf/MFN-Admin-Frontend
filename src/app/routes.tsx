@@ -27,6 +27,10 @@ export const router = createBrowserRouter([
     path: '/register',
     element: <RegisterPage />,
   },
+{
+    path: '/accept-invite',
+    element: <RegisterPage />,
+  },
   {
     path: '/forgot-password',
     element: <ForgotPasswordPage />,

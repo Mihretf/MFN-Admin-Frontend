@@ -43,6 +43,7 @@ export function PostsPage() {
   const [churches, setChurches] = useState<Church[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [userRegionName, setUserRegionName] = useState<string>('');
 
   // Form states
   const [title, setTitle] = useState('');
@@ -74,6 +75,21 @@ export function PostsPage() {
       fetchPosts();
     }
   }, [viewRegionId, searchTerm, filterCategory, sortOrder]);
+
+  const fetchUserRegionName = async (regionId: string) => {
+    try {
+      // Since there's no single region API, we'll get all regions and find ours
+      const response = await regionAPI.getRegions();
+      const data = Array.isArray(response.data) ? response.data : (response.data.regions || []);
+      const userRegion = data.find((r: Region) => r.id === regionId);
+      if (userRegion) {
+        setUserRegionName(userRegion.name);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user region:', error);
+    }
+  };
+
 const fetchRegions = async () => {
     try {
       const response = await regionAPI.getRegions();
@@ -84,6 +100,14 @@ const fetchRegions = async () => {
       if (!isSuperAdmin && user?.region_id) {
         setSelectedRegionId(user.region_id);
         setViewRegionId(user.region_id);
+        // Fetch the region name for display
+        const userRegion = data.find((r: Region) => r.id === user.region_id);
+        if (userRegion) {
+          setUserRegionName(userRegion.name);
+        } else {
+          // If not found, try to fetch it separately
+          fetchUserRegionName(user.region_id);
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch regions:', error);
@@ -124,13 +148,25 @@ const fetchRegions = async () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check if region is selected
+    const regionIdToUse = selectedRegionId || user?.region_id;
+    
+    if (!regionIdToUse || regionIdToUse.trim() === '') {
+      toast.error('Please select a region first.');
+      return;
+    }
+
     setUploading(true);
     try {
-      const response = await uploadAPI.uploadImage(file);
+      const response = await uploadAPI.uploadImage(file, {
+        region_id: regionIdToUse,
+      });
       const uploadedUrl = response.data.asset.secure_url;
       setImageUrl(uploadedUrl);
       toast.success('Image uploaded successfully!');
     } catch (error: any) {
+      console.error('Upload error:', error);
+      console.error('Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to upload image.');
     } finally {
       setUploading(false);
@@ -141,13 +177,21 @@ const fetchRegions = async () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check if region is selected
+    const regionIdToUse = selectedRegionId || user?.region_id;
+    if (!regionIdToUse || regionIdToUse.trim() === '') {
+      toast.error('Please select a region first.');
+      return;
+    }
+
     setUploading(true);
     try {
-      const response = await uploadAPI.uploadVideo(file);
+      const response = await uploadAPI.uploadVideo(file, regionIdToUse);
       const uploadedUrl = response.data.asset.secure_url;
       setVideoUrl(uploadedUrl);
       toast.success('Video uploaded successfully!');
     } catch (error: any) {
+      console.error('Upload error:', error);
       toast.error(error.response?.data?.message || 'Failed to upload video.');
     } finally {
       setUploading(false);
@@ -227,22 +271,27 @@ const fetchRegions = async () => {
               <form onSubmit={handleCreatePost} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="region">Region *</Label>
-                  <Select
-                    value={selectedRegionId}
-                    onValueChange={setSelectedRegionId}
-                    disabled={!isSuperAdmin}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a region" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem key={region.id} value={region.id}>
-                          {region.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {isSuperAdmin ? (
+                    <Select
+                      value={selectedRegionId}
+                      onValueChange={setSelectedRegionId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a region" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {regions.map((region) => (
+                          <SelectItem key={region.id} value={region.id}>
+                            {region.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-2 border rounded-md bg-gray-50">
+                      {userRegionName || regions.find(r => r.id === selectedRegionId)?.name || `Region ${selectedRegionId}`}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -295,7 +344,14 @@ const fetchRegions = async () => {
                       {uploading && <Upload className="w-4 h-4 animate-spin" />}
                     </div>
                     {imageUrl && (
-                      <p className="text-sm text-green-600">✓ Image uploaded</p>
+                      <div className="mt-2">
+                        <p className="text-sm text-green-600 mb-2">✓ Image uploaded</p>
+                        <img
+                          src={imageUrl}
+                          alt="Uploaded post image"
+                          className="max-w-xs h-32 object-cover rounded-lg border"
+                        />
+                      </div>
                     )}
                   </div>
 
@@ -312,7 +368,15 @@ const fetchRegions = async () => {
                       {uploading && <Upload className="w-4 h-4 animate-spin" />}
                     </div>
                     {videoUrl && (
-                      <p className="text-sm text-green-600">✓ Video uploaded</p>
+                      <div className="mt-2">
+                        <p className="text-sm text-green-600 mb-2">✓ Video uploaded</p>
+                        <video
+                          src={videoUrl}
+                          className="max-w-xs h-32 object-cover rounded-lg border"
+                          controls={false}
+                          muted
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -384,22 +448,27 @@ const fetchRegions = async () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="viewRegion">Region</Label>
-                    <Select
-                      value={viewRegionId}
-                      onValueChange={setViewRegionId}
-                      disabled={!isSuperAdmin}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a region" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {regions.map((region) => (
-                          <SelectItem key={region.id} value={region.id}>
-                            {region.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isSuperAdmin ? (
+                      <Select
+                        value={viewRegionId}
+                        onValueChange={setViewRegionId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a region" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {regions.map((region) => (
+                            <SelectItem key={region.id} value={region.id}>
+                              {region.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="p-2 border rounded-md bg-gray-50">
+                        {userRegionName || regions.find(r => r.id === viewRegionId)?.name || `Region ${viewRegionId}`}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">

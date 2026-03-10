@@ -16,6 +16,9 @@ interface GalleryItem {
   region_id: string;
   image_url: string;
   caption?: string;
+  title?: string;
+  type?: string;
+  description?: string;
   location_link?: string;
   created_at?: string;
 }
@@ -40,11 +43,15 @@ export function GalleryPage() {
   const [churches, setChurches] = useState<Church[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [userRegionName, setUserRegionName] = useState<string>('');
 
   // Form states
   const [selectedRegionId, setSelectedRegionId] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [caption, setCaption] = useState('');
+  const [title, setTitle] = useState('');
+  const [type, setType] = useState('');
+  const [description, setDescription] = useState('');
   const [locationLink, setLocationLink] = useState('');
   const [selectedChurchId, setSelectedChurchId] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('');
@@ -70,6 +77,20 @@ export function GalleryPage() {
     }
   }, [viewRegionId, searchTerm, sortOrder]);
 
+  const fetchUserRegionName = async (regionId: string) => {
+    try {
+      // Since there's no single region API, we'll get all regions and find ours
+      const response = await regionAPI.getRegions();
+      const data = Array.isArray(response.data) ? response.data : (response.data.regions || []);
+      const userRegion = data.find((r: Region) => r.id === regionId);
+      if (userRegion) {
+        setUserRegionName(userRegion.name);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user region:', error);
+    }
+  };
+
   const fetchRegions = async () => {
     try {
       const response = await regionAPI.getRegions();
@@ -79,6 +100,15 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
       if (!isSuperAdmin && user?.region_id) {
         setSelectedRegionId(user.region_id);
         setViewRegionId(user.region_id);
+        // Fetch the region name for display
+        const data = Array.isArray(response.data) ? response.data : (response.data.regions || []);
+        const userRegion = data.find((r: Region) => r.id === user.region_id);
+        if (userRegion) {
+          setUserRegionName(userRegion.name);
+        } else {
+          // If not found, try to fetch it separately
+          fetchUserRegionName(user.region_id);
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch regions:', error);
@@ -115,11 +145,21 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
 
     setUploading(true);
     try {
-      const response = await uploadAPI.uploadImage(file);
+      // Ensure we have a region_id - use selectedRegionId or fallback to user's region
+      const regionId = selectedRegionId || user?.region_id;
+      
+      const response = await uploadAPI.uploadImage(file, {
+        title: title || undefined,
+        type: type || undefined,
+        description: description || undefined,
+        region_id: regionId || undefined,
+      });
       const uploadedUrl = response.data.asset.secure_url;
       setImageUrl(uploadedUrl);
       toast.success('Image uploaded successfully!');
     } catch (error: any) {
+      console.error('Upload error:', error);
+      console.error('Error response:', error.response);
       toast.error(error.response?.data?.message || 'Failed to upload image.');
     } finally {
       setUploading(false);
@@ -128,6 +168,7 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
 
   const handleCreateGalleryItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!imageUrl || !selectedRegionId) {
       toast.error('Please upload an image and select a region.');
       return;
@@ -135,10 +176,13 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
 
     setLoading(true);
     try {
-      await galleryAPI.createGalleryItem({
+      const response = await galleryAPI.createGalleryItem({
         region_id: selectedRegionId,
         image_url: imageUrl,
         caption: caption || undefined,
+        title: title || undefined,
+        type: type || undefined,
+        description: description || undefined,
         church_id: selectedChurchId || undefined,
         location_link: locationLink || undefined,
         expires_in_days: expiresInDays ? parseInt(expiresInDays) : undefined,
@@ -148,6 +192,9 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
       // Reset form
       setImageUrl('');
       setCaption('');
+      setTitle('');
+      setType('');
+      setDescription('');
       setLocationLink('');
       setSelectedChurchId('');
       setExpiresInDays('');
@@ -156,6 +203,8 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
         fetchGallery();
       }
     } catch (error: any) {
+      console.error('Gallery creation error:', error);
+      console.error('Error response:', error.response);
       toast.error(error.response?.data?.message || 'Failed to add gallery item.');
     } finally {
       setLoading(false);
@@ -185,22 +234,27 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
               <form onSubmit={handleCreateGalleryItem} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="region">Region *</Label>
-                  <Select
-                    value={selectedRegionId}
-                    onValueChange={setSelectedRegionId}
-                    disabled={!isSuperAdmin}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a region" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem key={region.id} value={region.id}>
-                          {region.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {isSuperAdmin ? (
+                    <Select
+                      value={selectedRegionId}
+                      onValueChange={setSelectedRegionId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a region" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {regions.map((region) => (
+                          <SelectItem key={region.id} value={region.id}>
+                            {region.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="p-2 border rounded-md bg-gray-50">
+                      {userRegionName || regions.find(r => r.id === selectedRegionId)?.name || `Region ${selectedRegionId}`}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -231,6 +285,44 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
                     placeholder="Add a caption for this photo..."
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title (Optional)</Label>
+                  <Input
+                    id="title"
+                    placeholder="e.g., Sunday Service, Youth Event"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="type">Type (Optional)</Label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select event type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="worship">Worship</SelectItem>
+                      <SelectItem value="youth">Youth</SelectItem>
+                      <SelectItem value="outreach">Outreach</SelectItem>
+                      <SelectItem value="fellowship">Fellowship</SelectItem>
+                      <SelectItem value="special_event">Special Event</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Detailed description of the event/photo..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
                     rows={3}
                   />
                 </div>
@@ -295,22 +387,27 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="viewRegion">Region</Label>
-                    <Select
-                      value={viewRegionId}
-                      onValueChange={setViewRegionId}
-                      disabled={!isSuperAdmin}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a region" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {regions.map((region) => (
-                          <SelectItem key={region.id} value={region.id}>
-                            {region.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isSuperAdmin ? (
+                      <Select
+                        value={viewRegionId}
+                        onValueChange={setViewRegionId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a region" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {regions.map((region) => (
+                            <SelectItem key={region.id} value={region.id}>
+                              {region.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="p-2 border rounded-md bg-gray-50">
+                        {userRegionName || regions.find(r => r.id === viewRegionId)?.name || `Region ${viewRegionId}`}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -354,8 +451,19 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
                                 alt={item.caption || 'Gallery image'}
                                 className="w-full h-64 object-cover rounded-t-lg"
                               />
-                              {(item.caption || item.location_link || item.created_at) && (
+                              {(item.title || item.type || item.description || item.caption || item.location_link || item.created_at) && (
                                 <div className="p-4 space-y-2">
+                                  {item.title && (
+                                    <h4 className="font-semibold text-sm">{item.title}</h4>
+                                  )}
+                                  {item.type && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">
+                                      {item.type}
+                                    </span>
+                                  )}
+                                  {item.description && (
+                                    <p className="text-sm text-gray-600">{item.description}</p>
+                                  )}
                                   {item.caption && (
                                     <p className="text-sm">{item.caption}</p>
                                   )}
