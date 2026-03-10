@@ -28,6 +28,7 @@ export function DashboardLayout() {
           { to: '/dashboard/blogs', icon: BookOpen, label: 'Blogs' },
         ]
       : [
+          { to: '/dashboard/churches', icon: Building, label: 'Churches' },
           { to: '/dashboard/posts', icon: FileText, label: 'Services' },
         ]),
     { to: '/dashboard/gallery', icon: Image, label: 'Gallery' },

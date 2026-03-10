@@ -81,11 +81,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'churches',
-        element: (
-          <ProtectedRoute requireSuperAdmin>
-            <ChurchesPage />
-          </ProtectedRoute>
-        ),
+        element: <ChurchesPage />,
       },
       {
         path: 'gallery',
