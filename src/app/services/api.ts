@@ -27,9 +27,8 @@ export const authAPI = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
   
-  // FIXED: Your backend uses '/register' for both normal and invite-based reg
   acceptInvite: (token: string, email: string, password: string) =>
-    api.post('/api/auth/register', { token, email, password }), 
+    api.post('/auth/accept-invite', { token, email, password }), 
   
   forgotPassword: (email: string) =>
     api.post('/api/auth/forgot-password', { email }),

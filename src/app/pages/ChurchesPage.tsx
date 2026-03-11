@@ -25,7 +25,8 @@ interface Region {
 
 export function ChurchesPage() {
   const user = useAppSelector((state) => state.auth.user);
-  const isSuperAdmin = user?.role === 'super';
+  const isSuperAdmin = user?.role === 'super' || user?.role === 'super_admin';
+  const userRegionId = user?.region_id || (user as any)?.regionId || (user as any)?.region?.id || '';
 
   const [churches, setChurches] = useState<Church[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
@@ -65,9 +66,9 @@ export function ChurchesPage() {
       
     setRegions(data);
     
-    if (!isSuperAdmin && user?.region_id) {
-      setSelectedRegionId(user.region_id);
-      setViewRegionId(user.region_id);
+    if (!isSuperAdmin && userRegionId) {
+      setSelectedRegionId(userRegionId);
+      setViewRegionId(userRegionId);
     }
   } catch (error: any) {
     console.error('Failed to fetch regions:', error);
@@ -91,7 +92,9 @@ export function ChurchesPage() {
 
   const handleCreateChurch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !selectedRegionId) {
+    const regionIdToUse = selectedRegionId || (!isSuperAdmin ? userRegionId : '');
+
+    if (!name.trim() || !regionIdToUse) {
       toast.error('Please fill in all required fields.');
       return;
     }
@@ -100,7 +103,7 @@ export function ChurchesPage() {
     try {
       const response = await churchAPI.createChurch({
         name,
-        region_id: selectedRegionId,
+        region_id: regionIdToUse,
         location_link: locationLink || undefined,
       });
       const createdId = response?.data?.id;
@@ -111,7 +114,7 @@ export function ChurchesPage() {
       setName('');
       setLocationLink('');
       
-      if (viewRegionId === selectedRegionId) {
+      if (viewRegionId === regionIdToUse) {
         fetchChurches();
       }
 
@@ -348,7 +351,10 @@ export function ChurchesPage() {
                   />
                 </div>
 
-                <Button type="submit" disabled={loading || regions.length === 0}>
+                <Button
+                  type="submit"
+                  disabled={loading || (isSuperAdmin ? regions.length === 0 : !userRegionId)}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   {loading ? 'Adding...' : 'Add Church'}
                 </Button>
