@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = "https://missionfornationbackend.onrender.com"
+export const API_BASE_URL = "https://missionfornationbackend.onrender.com";
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -26,7 +27,6 @@ export const authAPI = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
   
-  // FIXED: Your backend uses '/auth/register' for invite-based reg
   acceptInvite: (token: string, email: string, password: string) =>
     api.post('/auth/register', { token, email, password }), 
   
@@ -65,6 +65,24 @@ export const churchAPI = {
   
   getChurches: (region_id?: string) =>
     api.get(`/api/churches${region_id ? `?region_id=${region_id}` : ''}`),
+
+  getChurchById: (churchId: string) =>
+    api.get(`/api/churches/${churchId}`),
+
+  updateChurch: async (churchId: string, data: Record<string, unknown>) => {
+    try {
+      return await api.put(`/api/churches/${churchId}`, data);
+    } catch (error: any) {
+      // Some backends expose PATCH only for partial updates.
+      if (error?.response?.status === 404 || error?.response?.status === 405) {
+        return api.patch(`/api/churches/${churchId}`, data);
+      }
+      throw error;
+    }
+  },
+
+  deleteChurch: (churchId: string) =>
+    api.delete(`/api/churches/${churchId}`),
 };
 
 // Upload API (Cloudinary)
