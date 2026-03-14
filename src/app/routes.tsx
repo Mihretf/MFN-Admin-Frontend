@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { AcceptInvitePage } from './pages/AcceptInvitePage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardLayout } from './components/DashboardLayout';
@@ -29,7 +30,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/accept-invite',
-    element: <RegisterPage />,
+    element: <AcceptInvitePage />,
   },
   {
     path: '/auth/accept-invite',

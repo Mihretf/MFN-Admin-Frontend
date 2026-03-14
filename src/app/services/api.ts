@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = "https://missionfornationbackend.onrender.com";
-
+const API_BASE_URL = "https://missionfornationbackend.onrender.com"
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -27,6 +26,7 @@ export const authAPI = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
   
+  // FIXED: Your backend uses '/auth/register' for invite-based reg
   acceptInvite: (token: string, email: string, password: string) =>
     api.post('/auth/register', { token, email, password }), 
   
