@@ -30,6 +30,10 @@ export const authAPI = {
   acceptInvite: (token: string, email: string, password: string) =>
     api.post('/api/auth/register', { token, email, password }), 
   
+  // New: Auto-accept invite with token only (assumes backend handles login)
+  acceptInviteAuto: (token: string) =>
+    api.post('/api/auth/accept-invite', { token }),
+  
   forgotPassword: (email: string) =>
     api.post('/api/auth/forgot-password', { email }),
   
