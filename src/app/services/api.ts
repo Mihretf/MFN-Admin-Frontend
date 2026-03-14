@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:4000';
+export const API_BASE_URL = "https://missionfornationbackend.onrender.com";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -28,7 +28,7 @@ export const authAPI = {
     api.post('/auth/login', { email, password }),
   
   acceptInvite: (token: string, email: string, password: string) =>
-    api.post('/auth/accept-invite', { token, email, password }), 
+    api.post('/auth/register', { token, email, password }), 
   
   forgotPassword: (email: string) =>
     api.post('/api/auth/forgot-password', { email }),
