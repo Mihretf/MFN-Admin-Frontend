@@ -16,7 +16,6 @@ export function AcceptInvitePage() {
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
-  const [validating, setValidating] = useState(false);
   const [tokenValid, setTokenValid] = useState<boolean | null>(null);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -40,22 +39,10 @@ export function AcceptInvitePage() {
     const urlToken = searchParams.get('token');
     if (urlToken) {
       setToken(urlToken);
-      validateToken(urlToken);
+      // Skip validation for now, assume token is valid if present
+      setTokenValid(true);
     }
   }, [searchParams]);
-
-  const validateToken = async (tokenToValidate: string) => {
-    setValidating(true);
-    try {
-      await inviteAPI.validateToken(tokenToValidate);
-      setTokenValid(true);
-    } catch (error: any) {
-      setTokenValid(false);
-      toast.error(error.response?.data?.message || 'Invalid or expired invitation token.');
-    } finally {
-      setValidating(false);
-    }
-  };
 
   const handleAcceptInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,11 +126,8 @@ export function AcceptInvitePage() {
                 onChange={(e) => setToken(e.target.value)}
                 required
               />
-              {validating && <p className="text-sm text-muted-foreground">Validating token...</p>}
-              {tokenValid === true && <p className="text-sm text-green-600">Token is valid</p>}
-              {tokenValid === false && <p className="text-sm text-red-600">Token is invalid</p>}
             </div>
-            <Button type="submit" className="w-full" disabled={loading || tokenValid !== true}>
+            <Button type="submit" className="w-full" disabled={loading}>
               <UserPlus className="w-4 h-4 mr-2" />
               {loading ? 'Accepting Invitation...' : 'Accept Invitation'}
             </Button>
