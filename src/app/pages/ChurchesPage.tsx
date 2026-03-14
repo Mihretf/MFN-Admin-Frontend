@@ -146,8 +146,17 @@ export function ChurchesPage() {
     e.preventDefault();
     const regionIdToUse = selectedRegionId || (!isSuperAdmin ? userRegionId : '');
 
-    if (!name.trim() || !regionIdToUse) {
-      toast.error('Please fill in all required fields.');
+    if (!name.trim()) {
+      toast.error('Please enter a church name.');
+      return;
+    }
+
+    if (!regionIdToUse) {
+      if (isSuperAdmin) {
+        toast.error('Please select a region before adding a church.');
+      } else {
+        toast.error('Your account is not linked to a region. Ask a super admin to invite you again with a region.');
+      }
       return;
     }
 
