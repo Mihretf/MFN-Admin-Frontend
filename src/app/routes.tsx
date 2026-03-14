@@ -28,9 +28,13 @@ export const router = createBrowserRouter([
     path: '/register',
     element: <RegisterPage />,
   },
-{
+  {
     path: '/accept-invite',
     element: <AcceptInvitePage />,
+  },
+  {
+    path: '/auth/accept-invite',
+    element: <RegisterPage />,
   },
   {
     path: '/forgot-password',
@@ -82,11 +86,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'churches',
-        element: (
-          <ProtectedRoute requireSuperAdmin>
-            <ChurchesPage />
-          </ProtectedRoute>
-        ),
+        element: <ChurchesPage />,
       },
       {
         path: 'gallery',

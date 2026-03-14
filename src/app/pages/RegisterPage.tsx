@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router';
 import { useAppDispatch } from '../store/hooks';
 import { setCredentials } from '../store/authSlice';
-import { authAPI, inviteAPI } from '../services/api';
+import { authAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
 import { Church, UserPlus } from 'lucide-react';
-import { jwtDecode } from 'jwt-decode';
 
 export function RegisterPage() {
   const [searchParams] = useSearchParams();
@@ -17,8 +16,6 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
-  const [validating, setValidating] = useState(false);
-  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -37,29 +34,28 @@ export function RegisterPage() {
   const passwordRequirements = getPasswordStrength(password);
 
   useEffect(() => {
-    // Get token from URL query params
+    // Token is supplied through invite URL (?token=...)
     const urlToken = searchParams.get('token');
     if (urlToken) {
       setToken(urlToken);
-      validateToken(urlToken);
+      const invitedEmail = searchParams.get('email');
+      if (invitedEmail) {
+        setEmail(invitedEmail);
+      }
+      return;
     }
-  }, [searchParams]);
 
-  const validateToken = async (tokenToValidate: string) => {
-    setValidating(true);
-    try {
-      await inviteAPI.validateToken(tokenToValidate);
-      setTokenValid(true);
-    } catch (error: any) {
-      setTokenValid(false);
-      toast.error(error.response?.data?.message || 'Invalid or expired invitation token.');
-    } finally {
-      setValidating(false);
-    }
-  };
+    toast.error('Invitation token not found. Please use the invite link from your email.');
+  }, [searchParams]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!token) {
+      toast.error('Invitation token is missing. Open the invitation link again.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -129,17 +125,6 @@ export function RegisterPage() {
                   ))}
                 </div>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="token">Invitation Token</Label>
-              <Input
-                id="token"
-                type="text"
-                placeholder="Enter your invitation token"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                required
-              />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               <UserPlus className="w-4 h-4 mr-2" />

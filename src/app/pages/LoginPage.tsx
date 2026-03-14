@@ -2,33 +2,52 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useAppDispatch } from '../store/hooks';
 import { setCredentials } from '../store/authSlice';
-import { authAPI } from '../services/api';
+import { authAPI, API_BASE_URL } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
 import { Church, LogIn } from 'lucide-react';
-import { jwtDecode } from 'jwt-decode'; // Import this at the top
+import { useRef } from 'react';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
+
+  // Prevent accidental double-submit (e.g., rapid double click / enter key).
+  if (isSubmittingRef.current) {
+    return;
+  }
+
+  isSubmittingRef.current = true;
   setLoading(true);
 
   try {
+    console.log('[Login] Request', {
+      method: 'POST',
+      url: `${API_BASE_URL}/auth/login`,
+      email,
+    });
+
     const response = await authAPI.login(email, password);
     const { token, user } = response.data;
 
+    console.log('[Login] Success response', {
+      status: response.status,
+      data: response.data,
+    });
+
     // Use the user from response.data instead of JWT decode, as it should include region_id
     dispatch(setCredentials({token, user}));
-    toast.success("Login Sucessful!")
+    toast.success('Login successful!');
     
     // dispatch(setCredentials({ token, user }));
     // toast.success('Login successful!');
@@ -41,9 +60,15 @@ const handleLogin = async (e: React.FormEvent) => {
     }
 
   } catch (error: any) {
+    console.error('[Login] Error response', {
+      status: error?.response?.status,
+      data: error?.response?.data,
+      message: error?.message,
+    });
     toast.error(error.response?.data?.message || 'Login failed. Please try again.');
   } finally {
     setLoading(false);
+    isSubmittingRef.current = false;
   }
 };
 
