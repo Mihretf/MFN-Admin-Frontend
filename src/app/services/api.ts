@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-export const API_BASE_URL = "https://missionfornationbackend.onrender.com";
+// Deployed backend base URL (no /api suffix here)
+export const API_BASE_URL = 'https://missionfornationbackend.onrender.com';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -31,19 +32,16 @@ export const authAPI = {
     api.post('/auth/register', { token, email, password }), 
   
   forgotPassword: (email: string) =>
-    api.post('/api/auth/forgot-password', { email }),
+    api.post('/auth/forgot-password', { email }),
   
   resetPassword: (token: string, password: string) =>
-    api.post('/api/auth/reset-password', { token, password }),
+    api.post('/auth/reset-password', { token, password }),
 };
 
 // Invite API
 export const inviteAPI = {
-  // NOTE: Your backend code provided doesn't show a '/validate' route.
-  // If you haven't written it yet, this will still 404. 
-  // You might want to add a GET /validate route to your backend invitation router.
   validateToken: (token: string) =>
-    api.get(`/api/invite/validate?token=${token}`),
+    api.get(`/invite/validate?token=${token}`),
   
   sendInvitation: (email: string, role: string, region_id: string) =>
     api.post('/invite/send', { email, role, region_id }),

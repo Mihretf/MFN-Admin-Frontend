@@ -551,7 +551,7 @@ export function ChurchesPage() {
 
                 <Button
                   type="submit"
-                  disabled={loading || (isSuperAdmin ? regions.length === 0 : !userRegionId)}
+                  disabled={loading}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   {loading ? 'Adding...' : 'Add Church'}
