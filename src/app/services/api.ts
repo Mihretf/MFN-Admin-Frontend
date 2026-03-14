@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://missionfornationbacked-1.onrender.com';
-
+const API_BASE_URL = "https://missionfornationbackend.onrender.com"
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
