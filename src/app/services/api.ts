@@ -28,7 +28,7 @@ export const authAPI = {
     api.post('/auth/login', { email, password }),
   
   acceptInvite: (token: string, email: string, password: string) =>
-    api.post('/auth/register', { token, email, password }), 
+    api.post('/auth/accept-invite', { token, email, password }), 
   
   forgotPassword: (email: string) =>
     api.post('/auth/forgot-password', { email }),
