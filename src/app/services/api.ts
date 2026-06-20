@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Deployed backend base URL (no /api suffix here)
-export const API_BASE_URL = 'https://missionfornationbacked-3.onrender.com';
+export const API_BASE_URL = import.meta.env.DEV ? '/api_proxy' : 'https://missionfornationbacked-3.onrender.com';
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
