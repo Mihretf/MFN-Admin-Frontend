@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
-import { FileText, Plus, Upload, Calendar } from 'lucide-react';
+import { FileText, Plus, Upload, Calendar, Edit, Trash2, Check, X } from 'lucide-react';
 
 interface Blog {
   id: string;
@@ -30,6 +30,12 @@ export function BlogsPage() {
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
+  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editExpiresInDays, setEditExpiresInDays] = useState('');
+  const [blogToDelete, setBlogToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBlogs();
@@ -97,6 +103,84 @@ const fetchBlogs = async () => {
       fetchBlogs();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to create blog post.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const response = await uploadAPI.uploadImage(file);
+      const uploadedUrl = response.data.asset.secure_url;
+      setEditImageUrl(uploadedUrl);
+      toast.success('Image uploaded successfully!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to upload image.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const startEdit = (blog: Blog) => {
+    setEditingBlogId(blog.id);
+    setEditText(blog.text);
+    setEditImageUrl(blog.image_url || '');
+    setEditExpiresInDays(''); // Cannot easily compute days from expiry date, keep empty
+  };
+
+  const cancelEdit = () => {
+    setEditingBlogId(null);
+    setEditText('');
+    setEditImageUrl('');
+    setEditExpiresInDays('');
+  };
+
+  const handleUpdateBlog = async () => {
+    if (!editText.trim()) {
+      toast.error('Please enter blog content.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await blogAPI.updateBlog(editingBlogId!, {
+        text: editText,
+        image_url: editImageUrl || undefined,
+        expires_in_days: editExpiresInDays ? parseInt(editExpiresInDays) : undefined,
+      });
+      toast.success('Blog post updated successfully!');
+      cancelEdit();
+      fetchBlogs();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update blog post.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmDelete = (id: string) => {
+    setBlogToDelete(id);
+  };
+
+  const cancelDelete = () => {
+    setBlogToDelete(null);
+  };
+
+  const handleDeleteBlog = async () => {
+    if (!blogToDelete) return;
+
+    setLoading(true);
+    try {
+      await blogAPI.deleteBlog(blogToDelete);
+      toast.success('Blog post deleted successfully!');
+      setBlogToDelete(null);
+      fetchBlogs();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete blog post.');
     } finally {
       setLoading(false);
     }
@@ -222,23 +306,83 @@ const fetchBlogs = async () => {
                     blogs.map((blog) => (
                       <Card key={blog.id}>
                         <CardContent className="pt-6 space-y-4">
-                          <p className="whitespace-pre-wrap">{blog.text}</p>
-                          
-                          {blog.image_url && (
-                            <div>
-                              <img
-                                src={blog.image_url}
-                                alt="Blog image"
-                                className="max-w-full h-auto rounded-lg"
+                          {editingBlogId === blog.id ? (
+                            <div className="space-y-4">
+                              <Textarea
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                rows={4}
                               />
+                              <div className="space-y-2">
+                                <Label>Update Image (Optional)</Label>
+                                <div className="flex items-center gap-2">
+                                  <Input type="file" accept="image/*" onChange={handleEditImageUpload} disabled={uploading} />
+                                  {uploading && <Upload className="w-4 h-4 animate-spin" />}
+                                </div>
+                                {editImageUrl && (
+                                  <div className="mt-2">
+                                    <img src={editImageUrl} alt="Preview" className="max-w-xs rounded-lg" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <Label>New Expires In (Days) - Optional</Label>
+                                <Input type="number" placeholder="Leave empty to keep existing" value={editExpiresInDays} onChange={(e) => setEditExpiresInDays(e.target.value)} min="1" />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={handleUpdateBlog} disabled={loading || uploading}>
+                                  <Check className="w-4 h-4 mr-1" /> Save
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={cancelEdit}>
+                                  <X className="w-4 h-4 mr-1" /> Cancel
+                                </Button>
+                              </div>
                             </div>
-                          )}
+                          ) : (
+                            <>
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="space-y-4 flex-1">
+                                  <p className="whitespace-pre-wrap">{blog.text}</p>
+                                  
+                                  {blog.image_url && (
+                                    <div>
+                                      <img
+                                        src={blog.image_url}
+                                        alt="Blog image"
+                                        className="max-w-full h-auto rounded-lg"
+                                      />
+                                    </div>
+                                  )}
 
-                          {blog.created_at && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="w-4 h-4" />
-                              {new Date(blog.created_at).toLocaleDateString()}
-                            </div>
+                                  {blog.created_at && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Calendar className="w-4 h-4" />
+                                      {new Date(blog.created_at).toLocaleDateString()}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex flex-col gap-2">
+                                  <Button size="icon" variant="outline" onClick={() => startEdit(blog)}>
+                                    <Edit className="w-4 h-4 text-blue-500" />
+                                  </Button>
+                                  {blogToDelete === blog.id ? (
+                                    <div className="flex flex-col gap-2">
+                                      <Button size="sm" variant="destructive" onClick={handleDeleteBlog} disabled={loading}>
+                                        Confirm
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={cancelDelete} disabled={loading}>
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button size="icon" variant="outline" onClick={() => confirmDelete(blog.id)}>
+                                      <Trash2 className="w-4 h-4 text-red-500" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </>
                           )}
                         </CardContent>
                       </Card>
