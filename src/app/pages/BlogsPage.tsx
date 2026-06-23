@@ -21,7 +21,6 @@ export function BlogsPage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
 
   // Form states
   const [text, setText] = useState('');
@@ -29,44 +28,40 @@ export function BlogsPage() {
   const [expiresInDays, setExpiresInDays] = useState('');
   
   // Edit form states
+  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
-  const [editExpiresInDays, setEditExpiresInDays] = useState('');
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-
-  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
-  const [editImageUrl, setEditImageUrl] = useState('');
-  const [editExpiresInDays, setEditExpiresInDays] = useState('');
+  
+  // Delete states
   const [blogToDelete, setBlogToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBlogs();
   }, [searchTerm, sortOrder]);
 
-const fetchBlogs = async () => {
-  try {
-    const response = await blogAPI.getBlogs({
-      search: searchTerm || undefined,
-      sort: sortOrder,
-      include_expired: false,
-    });
+  const fetchBlogs = async () => {
+    try {
+      const response = await blogAPI.getBlogs({
+        search: searchTerm || undefined,
+        sort: sortOrder,
+        include_expired: false,
+      });
 
-    // Check if data is the array itself, or if it's inside a 'blogs' key
-    const blogData = Array.isArray(response.data) 
-      ? response.data 
-      : (response.data?.blogs || []);
+      const blogData = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data?.blogs || []);
 
-    setBlogs(blogData);
-  } catch (error: any) {
-    console.error('Failed to fetch blogs:', error);
-    toast.error('Failed to load blogs.');
-    setBlogs([]); // Fallback to empty array to prevent crash
-  }
-};
+      setBlogs(blogData);
+    } catch (error: any) {
+      console.error('Failed to fetch blogs:', error);
+      toast.error('Failed to load blogs.');
+      setBlogs([]);
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,7 +96,6 @@ const fetchBlogs = async () => {
       });
       toast.success('Blog post created successfully!');
       
-      // Reset form
       setText('');
       setImageUrl('');
       setExpiresInDays('');
@@ -186,7 +180,7 @@ const fetchBlogs = async () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1>Homepage Blogs</h1>
+        <h1 className="text-2xl font-bold">Homepage Blogs</h1>
         <p className="text-muted-foreground">Manage public homepage blog posts (Super Admin Only)</p>
       </div>
 
@@ -303,7 +297,6 @@ const fetchBlogs = async () => {
                       <Card key={blog.id}>
                         <CardContent className="pt-6 space-y-4">
                           {editingBlogId === blog.id ? (
-                            // Edit form
                             <form onSubmit={handleUpdateBlog} className="space-y-4">
                               <div className="space-y-2">
                                 <Label>Edit Blog Content *</Label>
@@ -357,7 +350,6 @@ const fetchBlogs = async () => {
                               </div>
                             </form>
                           ) : (
-                            // Display mode
                             <>
                               <p className="whitespace-pre-wrap">{blog.text}</p>
                               
