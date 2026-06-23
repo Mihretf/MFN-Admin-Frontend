@@ -2,6 +2,7 @@ import axios from 'axios';
 
 // Deployed backend base URL (no /api suffix here)
 export const API_BASE_URL = import.meta.env.DEV ? '/api_proxy' : 'https://missionfornationbackendno.onrender.com';
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -17,10 +18,6 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
-
-// Auth API
-// Auth API
-// src/services/api.ts
 
 // Auth API
 export const authAPI = {
@@ -146,14 +143,6 @@ export const blogAPI = {
     if (params?.include_expired !== undefined) query.append('include_expired', String(params.include_expired));
     return api.get(`/api/blogs?${query.toString()}`);
   },
-
-  updateBlog: (blogId: string, data: {
-    text: string;
-    image_url?: string;
-    expires_in_days?: number;
-  }) => api.put(`/api/blogs/${blogId}`, data),
-
-  deleteBlog: (blogId: string) => api.delete(`/api/blogs/${blogId}`),
 };
 
 // Post API (Regional Services - Super + Regional Admin)

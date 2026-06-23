@@ -31,6 +31,7 @@ export function BlogsPage() {
   const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
+  const [editExpiresInDays, setEditExpiresInDays] = useState(''); // Added missing state
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
