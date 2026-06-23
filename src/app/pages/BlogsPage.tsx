@@ -132,7 +132,7 @@ export function BlogsPage() {
         text,
         image_url: imageUrl,
         expires_in_days: expiresInDays ? parseInt(expiresInDays, 10) : undefined,
-        imageFile: undefined, 
+        // imageFile: undefined, 
       });
       toast.success('Blog post created successfully!');
 
@@ -179,7 +179,7 @@ export function BlogsPage() {
         text: editText,
         image_url: editImageUrl || undefined,
         expires_in_days: editExpiresInDays ? parseInt(editExpiresInDays, 10) : undefined,
-        imageFile: undefined,
+        // imageFile: undefined,
       });
       toast.success('Blog post updated successfully!');
       handleCancelEdit();
