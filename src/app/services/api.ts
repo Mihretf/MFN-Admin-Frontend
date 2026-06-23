@@ -119,16 +119,46 @@ export const uploadAPI = {
 // Blog API (Homepage - Super only)
 export const blogAPI = {
   createBlog: (data: {
-    text: string;
+    text?: string;
     image_url?: string;
+    video_url?: string;
     expires_in_days?: number;
-  }) => api.post('/api/blogs', data),
-  
+    imageFile?: File;
+    videoFile?: File;
+  }) => {
+    const formData = new FormData();
+    if (data.text) formData.append('text', data.text);
+    if (data.image_url) formData.append('image_url', data.image_url);
+    if (data.video_url) formData.append('video_url', data.video_url);
+    if (data.expires_in_days != null) formData.append('expires_in_days', String(data.expires_in_days));
+    if (data.imageFile) formData.append('image', data.imageFile);
+    if (data.videoFile) formData.append('video', data.videoFile);
+
+    return api.post('/api/blogs', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   updateBlog: (id: string, data: {
     text?: string;
     image_url?: string;
+    video_url?: string;
     expires_in_days?: number;
-  }) => api.put(`/api/blogs/${id}`, data),
+    imageFile?: File;
+    videoFile?: File;
+  }) => {
+    const formData = new FormData();
+    if (data.text) formData.append('text', data.text);
+    if (data.image_url) formData.append('image_url', data.image_url);
+    if (data.video_url) formData.append('video_url', data.video_url);
+    if (data.expires_in_days != null) formData.append('expires_in_days', String(data.expires_in_days));
+    if (data.imageFile) formData.append('image', data.imageFile);
+    if (data.videoFile) formData.append('video', data.videoFile);
+
+    return api.put(`/api/blogs/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 
   deleteBlog: (id: string) => api.delete(`/api/blogs/${id}`),
 
