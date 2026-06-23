@@ -124,6 +124,18 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
     }
   };
 
+  const getArray = <T,>(payload: any, keys: string[] = []): T[] => {
+    if (Array.isArray(payload)) {
+      return payload as T[];
+    }
+    for (const key of keys) {
+      if (Array.isArray(payload?.[key])) {
+        return payload[key] as T[];
+      }
+    }
+    return [];
+  };
+
   const fetchGallery = async () => {
     try {
       const response = await galleryAPI.getGalleryItems({
@@ -132,10 +144,13 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
         sort: sortOrder,
         include_expired: false,
       });
-      setGalleryItems(response.data);
+      // Use getArray to handle different response formats
+      const data = getArray<GalleryItem>(response.data, ['galleries', 'galleryItems']);
+      setGalleryItems(data);
     } catch (error: any) {
       console.error('Failed to fetch gallery:', error);
       toast.error('Failed to load gallery.');
+      setGalleryItems([]); // Set empty array on error
     }
   };
 

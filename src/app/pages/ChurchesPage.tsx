@@ -7,9 +7,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { toast } from 'sonner';
-import { Church as ChurchIcon, Plus, MapPin, Save, Trash2 } from 'lucide-react';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 
 interface Church {
   id: string;
@@ -57,6 +55,7 @@ export function ChurchesPage() {
   const [uploadingHero, setUploadingHero] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [editingGalleryCaption, setEditingGalleryCaption] = useState<number | null>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -1425,27 +1424,88 @@ export function ChurchesPage() {
                                     </div>
                                   </div>
                                   {(Array.isArray(detailsObject?.gallery) ? detailsObject?.gallery : []).map((item: any, index: number) => (
-                                    <div key={`g-${index}`} className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                      <Input value={item?.url || ''} placeholder="Image URL" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
-                                        arr[index] = { ...(arr[index] || {}), url: e.target.value };
-                                        draft.gallery = arr;
-                                      })} />
-                                      <Input value={item?.caption || ''} placeholder="Caption" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
-                                        arr[index] = { ...(arr[index] || {}), caption: e.target.value };
-                                        draft.gallery = arr;
-                                      })} />
-                                      <Input value={item?.id || ''} placeholder="ID" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
-                                        arr[index] = { ...(arr[index] || {}), id: e.target.value };
-                                        draft.gallery = arr;
-                                      })} />
-                                      <Button type="button" variant="outline" className={themedActionButtonClass} disabled={detailsFormDisabled} onClick={() => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
-                                        draft.gallery = arr.filter((_: unknown, i: number) => i !== index);
-                                      })}>Remove</Button>
-                                    </div>
+                                    <Card key={`g-${index}`} className="p-4">
+                                      <div className="flex flex-col sm:flex-row gap-4">
+                                        <div className="flex-shrink-0">
+                                          <ImageWithFallback
+                                            src={item?.url || ''}
+                                            alt={item?.caption || 'Gallery image'}
+                                            className="w-24 h-24 object-cover rounded-md border"
+                                          />
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                          {editingGalleryCaption === index ? (
+                                            <div className="space-y-2">
+                                              <Input
+                                                value={item?.caption || ''}
+                                                placeholder="Enter caption"
+                                                onChange={(e) => updateDetailsObject((draft) => {
+                                                  const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
+                                                  arr[index] = { ...(arr[index] || {}), caption: e.target.value };
+                                                  draft.gallery = arr;
+                                                })}
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                  if (e.key === 'Enter') {
+                                                    setEditingGalleryCaption(null);
+                                                  } else if (e.key === 'Escape') {
+                                                    setEditingGalleryCaption(null);
+                                                  }
+                                                }}
+                                              />
+                                              <div className="flex gap-2">
+                                                <Button
+                                                  type="button"
+                                                  size="sm"
+                                                  onClick={() => setEditingGalleryCaption(null)}
+                                                >
+                                                  Save
+                                                </Button>
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => setEditingGalleryCaption(null)}
+                                                >
+                                                  Cancel
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="space-y-2">
+                                              <p className="text-sm font-medium">
+                                                {item?.caption || 'No caption'}
+                                              </p>
+                                              <p className="text-xs text-muted-foreground">
+                                                ID: {item?.id || 'No ID'}
+                                              </p>
+                                              <div className="flex gap-2">
+                                                <Button
+                                                  type="button"
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => setEditingGalleryCaption(index)}
+                                                >
+                                                  Edit Caption
+                                                </Button>
+                                                <Button
+                                                  type="button"
+                                                  variant="destructive"
+                                                  size="sm"
+                                                  onClick={() => updateDetailsObject((draft) => {
+                                                    const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
+                                                    draft.gallery = arr.filter((_: unknown, i: number) => i !== index);
+                                                  })}
+                                                >
+                                                  <Trash2 className="w-4 h-4 mr-1" />
+                                                  Delete
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </Card>
                                   ))}
                                 </div>
                               </CardContent>
