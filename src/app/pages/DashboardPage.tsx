@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useAppSelector } from '../store/hooks';
-import { blogAPI, churchAPI, galleryAPI, postAPI, regionAPI } from '../services/api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { useAppSelector } from '@/app/store/hooks';
+import { blogAPI, churchAPI, galleryAPI, postAPI, regionAPI } from '@/app/services/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { MapPin, Users, FileText, Image, Building, BookOpen, Loader2 } from 'lucide-react';
 
 interface Region {

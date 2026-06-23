@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { galleryAPI, regionAPI, churchAPI, uploadAPI } from '../services/api';
-import { useAppSelector } from '../store/hooks';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { galleryAPI, regionAPI, churchAPI, uploadAPI } from '@/app/services/api';
+import { useAppSelector } from '@/app/store/hooks';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
+import { Textarea } from '@/app/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { toast } from 'sonner';
 import { Image as ImageIcon, Plus, Upload, MapPin, Calendar } from 'lucide-react';
 

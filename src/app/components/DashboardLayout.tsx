@@ -1,6 +1,6 @@
 import { Link, Outlet, useNavigate } from 'react-router';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { logout } from '../store/authSlice';
+import { useAppDispatch, useAppSelector } from '@/app/store/hooks';
+import { logout } from '@/app/store/authSlice';
 import { Button } from './ui/button';
 import { Church, Home, MapPin, Users, FileText, LogOut, Menu, X, BookOpen, Image, Building } from 'lucide-react';
 import { useState } from 'react';
