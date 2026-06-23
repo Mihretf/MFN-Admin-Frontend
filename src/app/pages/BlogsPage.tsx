@@ -33,14 +33,14 @@ export function BlogsPage() {
   const [text, setText] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('');
-  const [rawImageFile, setRawImageFile] = useState<File | undefined>(undefined); // Added tracking for raw file
+  const [rawImageFile, setRawImageFile] = useState<File | undefined>(undefined);
 
   // Edit form states
   const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
   const [editExpiresInDays, setEditExpiresInDays] = useState('');
-  const [rawEditImageFile, setRawEditImageFile] = useState<File | undefined>(undefined); // Added tracking for edit raw file
+  const [rawEditImageFile, setRawEditImageFile] = useState<File | undefined>(undefined);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,9 +94,7 @@ export function BlogsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Save raw file into state context for our multi-part API block
     setRawImageFile(file);
-
     setUploading(true);
     try {
       const response = await uploadAPI.uploadImage(file);
@@ -121,14 +119,20 @@ export function BlogsPage() {
       return;
     }
 
+    if (!imageUrl.trim()) {
+      toast.error('Please upload an image first.');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Correct alignment with api.ts schema definition
+      // By sending imageFile: undefined, we prevent Axios from bundling binary multi-part
+      // data streams that collide with the string processing blocks on the server.
       await blogAPI.createBlog({
         text,
-        image_url: imageUrl || undefined,
+        image_url: imageUrl,
         expires_in_days: expiresInDays ? parseInt(expiresInDays, 10) : undefined,
-        imageFile: rawImageFile, // Pass raw binary object here
+        imageFile: undefined, 
       });
       toast.success('Blog post created successfully!');
 
@@ -175,7 +179,7 @@ export function BlogsPage() {
         text: editText,
         image_url: editImageUrl || undefined,
         expires_in_days: editExpiresInDays ? parseInt(editExpiresInDays, 10) : undefined,
-        imageFile: rawEditImageFile, // Pass edit binary object here
+        imageFile: undefined,
       });
       toast.success('Blog post updated successfully!');
       handleCancelEdit();
@@ -218,7 +222,6 @@ export function BlogsPage() {
     if (!file) return;
 
     setRawEditImageFile(file);
-
     setUploading(true);
     try {
       const response = await uploadAPI.uploadImage(file);
@@ -282,8 +285,8 @@ export function BlogsPage() {
                   </div>
                   {imageUrl && (
                     <div className="mt-2">
-                      <p className="text-sm text-green-600 mb-2">✓ Image ready to upload</p>
-                      <img src={imageUrl} alt="Preview" className="max-w-xs rounded-lg" />
+                      <p className="text-sm text-green-600 mb-2">✓ Image uploaded to cloud storage</p>
+                      <img src={imageUrl} alt="Preview" className="max-w-xs rounded-lg border shadow-sm" />
                     </div>
                   )}
                 </div>
@@ -401,7 +404,7 @@ export function BlogsPage() {
                                 {editImageUrl && (
                                   <div className="mt-2">
                                     <p className="text-sm text-green-600 mb-2">✓ Image updated</p>
-                                    <img src={editImageUrl} alt="Preview" className="max-w-xs rounded-lg" />
+                                    <img src={editImageUrl} alt="Preview" className="max-w-xs rounded-lg border" />
                                   </div>
                                 )}
                               </div>
@@ -435,8 +438,8 @@ export function BlogsPage() {
                                 <div>
                                   <img
                                     src={blog.image_url}
-                                    alt="Blog"
-                                    className="max-w-full h-auto rounded-lg"
+                                    alt="Blog Content"
+                                    className="max-w-md h-auto rounded-lg shadow-sm border"
                                   />
                                 </div>
                               )}
