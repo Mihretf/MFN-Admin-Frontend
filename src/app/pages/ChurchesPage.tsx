@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner'; // Fixed
-
+import { ChurchIcon, MapPin, Plus, Save, Trash2 } from 'lucide-react'; // 👈 ADD THIS LINE
 interface Church {
   id: string;
   name: string;
