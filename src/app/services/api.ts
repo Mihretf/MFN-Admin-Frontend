@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Deployed backend base URL (no /api suffix here)
-export const API_BASE_URL = 'https://missionfornationbackend.onrender.com';
+export const API_BASE_URL = import.meta.env.DEV ? '/api_proxy' : 'https://missionfornationbackendno.onrender.com';
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -127,6 +127,14 @@ export const blogAPI = {
     expires_in_days?: number;
   }) => api.post('/api/blogs', data),
   
+  updateBlog: (id: string, data: {
+    text?: string;
+    image_url?: string;
+    expires_in_days?: number;
+  }) => api.put(`/api/blogs/${id}`, data),
+
+  deleteBlog: (id: string) => api.delete(`/api/blogs/${id}`),
+
   getBlogs: (params?: {
     search?: string;
     sort?: 'newest' | 'oldest';

@@ -37,6 +37,12 @@ export function BlogsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
+  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editExpiresInDays, setEditExpiresInDays] = useState('');
+  const [blogToDelete, setBlogToDelete] = useState<string | null>(null);
+
   useEffect(() => {
     fetchBlogs();
   }, [searchTerm, sortOrder]);

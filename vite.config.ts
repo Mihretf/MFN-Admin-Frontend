@@ -16,6 +16,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api_proxy': {
+        target: 'https://missionfornationbacked-3.onrender.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api_proxy/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            // Remove Origin and Referer headers completely to match the working curl request
+            proxyReq.removeHeader('Origin');
+            proxyReq.removeHeader('Referer');
+          });
+        },
+      },
+    },
+  },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
