@@ -29,15 +29,20 @@ export function BlogsPage() {
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('create');
 
+  // Form states
   const [text, setText] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('');
+  const [rawImageFile, setRawImageFile] = useState<File | undefined>(undefined); // Added tracking for raw file
 
+  // Edit form states
   const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
   const [editExpiresInDays, setEditExpiresInDays] = useState('');
+  const [rawEditImageFile, setRawEditImageFile] = useState<File | undefined>(undefined); // Added tracking for edit raw file
 
+  // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -89,20 +94,22 @@ export function BlogsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Save raw file into state context for our multi-part API block
+    setRawImageFile(file);
+
     setUploading(true);
     try {
       const response = await uploadAPI.uploadImage(file);
-      const uploadedUrl = response?.data?.asset?.secure_url;
+      const uploadedUrl = response?.data?.asset?.secure_url || response?.data?.secure_url;
       if (!uploadedUrl) {
         throw new Error('No image URL returned from upload.');
       }
       setImageUrl(uploadedUrl);
-      toast.success('Image uploaded successfully!');
+      toast.success('Image processed successfully!');
     } catch (error: any) {
       toast.error(getApiError(error, 'Failed to upload image.'));
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
@@ -114,23 +121,21 @@ export function BlogsPage() {
       return;
     }
 
-    if (!imageUrl.trim()) {
-      toast.error('Please upload an image. The backend requires at least an image or video for each blog.');
-      return;
-    }
-
     setLoading(true);
     try {
+      // Correct alignment with api.ts schema definition
       await blogAPI.createBlog({
         text,
-        image_url: imageUrl,
+        image_url: imageUrl || undefined,
         expires_in_days: expiresInDays ? parseInt(expiresInDays, 10) : undefined,
+        imageFile: rawImageFile, // Pass raw binary object here
       });
       toast.success('Blog post created successfully!');
 
       setText('');
       setImageUrl('');
       setExpiresInDays('');
+      setRawImageFile(undefined);
 
       setActiveTab('view');
       await fetchBlogs();
@@ -146,6 +151,7 @@ export function BlogsPage() {
     setEditText(blog.text);
     setEditImageUrl(blog.image_url || '');
     setEditExpiresInDays('');
+    setRawEditImageFile(undefined);
   };
 
   const handleCancelEdit = () => {
@@ -153,6 +159,7 @@ export function BlogsPage() {
     setEditText('');
     setEditImageUrl('');
     setEditExpiresInDays('');
+    setRawEditImageFile(undefined);
   };
 
   const handleUpdateBlog = async (e: React.FormEvent) => {
@@ -168,6 +175,7 @@ export function BlogsPage() {
         text: editText,
         image_url: editImageUrl || undefined,
         expires_in_days: editExpiresInDays ? parseInt(editExpiresInDays, 10) : undefined,
+        imageFile: rawEditImageFile, // Pass edit binary object here
       });
       toast.success('Blog post updated successfully!');
       handleCancelEdit();
@@ -175,7 +183,7 @@ export function BlogsPage() {
     } catch (error: any) {
       const status = error?.response?.status;
       if (status === 404 || status === 405) {
-        toast.error('Blog editing is not available on the server yet. Ask the backend team to add PUT /api/blogs/:id.');
+        toast.error('Blog editing is not available on the server yet.');
       } else {
         toast.error(getApiError(error, 'Failed to update blog post.'));
       }
@@ -198,7 +206,7 @@ export function BlogsPage() {
     } catch (error: any) {
       const status = error?.response?.status;
       if (status === 404 || status === 405) {
-        toast.error('Blog deletion is not available on the server yet. Ask the backend team to add DELETE /api/blogs/:id.');
+        toast.error('Blog deletion is not available on the server yet.');
       } else {
         toast.error(getApiError(error, 'Failed to delete blog post.'));
       }
@@ -209,20 +217,21 @@ export function BlogsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setRawEditImageFile(file);
+
     setUploading(true);
     try {
       const response = await uploadAPI.uploadImage(file);
-      const uploadedUrl = response?.data?.asset?.secure_url;
+      const uploadedUrl = response?.data?.asset?.secure_url || response?.data?.secure_url;
       if (!uploadedUrl) {
         throw new Error('No image URL returned from upload.');
       }
       setEditImageUrl(uploadedUrl);
-      toast.success('Image uploaded successfully!');
+      toast.success('Image updated successfully!');
     } catch (error: any) {
       toast.error(getApiError(error, 'Failed to upload image.'));
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
@@ -268,13 +277,12 @@ export function BlogsPage() {
                       accept="image/*"
                       onChange={handleImageUpload}
                       disabled={uploading}
-                      required={!imageUrl}
                     />
                     {uploading && <Upload className="w-4 h-4 animate-spin" />}
                   </div>
                   {imageUrl && (
                     <div className="mt-2">
-                      <p className="text-sm text-green-600 mb-2">Image ready</p>
+                      <p className="text-sm text-green-600 mb-2">✓ Image ready to upload</p>
                       <img src={imageUrl} alt="Preview" className="max-w-xs rounded-lg" />
                     </div>
                   )}
@@ -361,9 +369,6 @@ export function BlogsPage() {
                     <div className="text-center py-12 border-2 border-dashed rounded-lg">
                       <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p className="text-muted-foreground">No blog posts found.</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Create a blog with an image, then check this tab again.
-                      </p>
                     </div>
                   ) : (
                     blogs.map((blog) => (
@@ -395,7 +400,7 @@ export function BlogsPage() {
                                 </div>
                                 {editImageUrl && (
                                   <div className="mt-2">
-                                    <p className="text-sm text-green-600 mb-2">Image ready</p>
+                                    <p className="text-sm text-green-600 mb-2">✓ Image updated</p>
                                     <img src={editImageUrl} alt="Preview" className="max-w-xs rounded-lg" />
                                   </div>
                                 )}
