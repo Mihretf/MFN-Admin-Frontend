@@ -19,7 +19,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api_proxy': {
-        target: 'https://missionfornationbacked-3.onrender.com',
+        target: 'https://missionfornationbackend.onrender.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api_proxy/, ''),
         configure: (proxy) => {

@@ -39,13 +39,24 @@ export function BlogsPage() {
   const [editExpiresInDays, setEditExpiresInDays] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [includeExpired, setIncludeExpired] = useState(true);
+  const [fetchingBlogs, setFetchingBlogs] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [searchTerm]);
 
   const fetchBlogs = async () => {
+    setFetchingBlogs(true);
     try {
       const response = await blogAPI.getBlogs({
-        search: searchTerm || undefined,
+        search: debouncedSearch || undefined,
         sort: sortOrder,
         include_expired: includeExpired,
       });
@@ -57,8 +68,14 @@ export function BlogsPage() {
       setBlogs(blogData);
     } catch (error: any) {
       console.error('Failed to fetch blogs:', error);
-      toast.error(getApiError(error, 'Failed to load blogs.'));
+      if (error?.code === 'ECONNABORTED') {
+        toast.error('Request timed out. The backend may be waking up — try again in a few seconds.');
+      } else {
+        toast.error(getApiError(error, 'Failed to load blogs.'));
+      }
       setBlogs([]);
+    } finally {
+      setFetchingBlogs(false);
     }
   };
 
@@ -66,7 +83,7 @@ export function BlogsPage() {
     if (activeTab === 'view') {
       fetchBlogs();
     }
-  }, [activeTab, searchTerm, sortOrder, includeExpired]);
+  }, [activeTab, debouncedSearch, sortOrder, includeExpired]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -335,7 +352,12 @@ export function BlogsPage() {
                 </div>
 
                 <div className="space-y-4 mt-6">
-                  {blogs.length === 0 ? (
+                  {fetchingBlogs ? (
+                    <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                      <Upload className="w-8 h-8 mx-auto mb-4 animate-spin opacity-50" />
+                      <p className="text-muted-foreground">Loading blogs...</p>
+                    </div>
+                  ) : blogs.length === 0 ? (
                     <div className="text-center py-12 border-2 border-dashed rounded-lg">
                       <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p className="text-muted-foreground">No blog posts found.</p>
