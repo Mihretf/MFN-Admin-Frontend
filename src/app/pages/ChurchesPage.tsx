@@ -96,6 +96,7 @@ export function ChurchesPage() {
 
   const detailsObject = getDetailsObject();
   const selectedRegionName = regions.find((r) => r.id === (selectedRegionId || userRegionId))?.name || '';
+  const detailsFormDisabled = detailsObject == null;
 
   useEffect(() => {
     fetchRegions();
@@ -523,7 +524,7 @@ export function ChurchesPage() {
                 </TabsList>
 
                 <TabsContent value="form" className="space-y-4">
-                  {detailsObject && !detailsFormDisabled ? (
+                  {detailsObject !== null ? (
                     <div className="space-y-6">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
