@@ -7,10 +7,12 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { toast } from 'sonner'; // Fixed
-import { ChurchIcon, MapPin, Plus, Save, Trash2 } from 'lucide-react'; // 👈 ADD THIS LINE
+import { ScrollArea } from '../components/ui/scroll-area';
+import { toast } from 'sonner';
+import { ChurchIcon, MapPin, Plus, Save, Trash2, ChevronDown, Edit, Calendar, Megaphone, Image } from 'lucide-react';
+
 interface Church {
   id: string;
   name: string;
@@ -54,10 +56,8 @@ export function ChurchesPage() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
-  const [uploadingHero, setUploadingHero] = useState(false);
-  const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [editingGalleryCaption, setEditingGalleryCaption] = useState<number | null>(null);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
   // Form states
   const [name, setName] = useState('');
@@ -68,7 +68,6 @@ export function ChurchesPage() {
 
   // Details states
   const [selectedChurchId, setSelectedChurchId] = useState('');
-  const [manualChurchId, setManualChurchId] = useState('');
   const [detailsJson, setDetailsJson] = useState('{}');
 
   const getDetailsObject = (): Record<string, any> | null => {
@@ -96,9 +95,7 @@ export function ChurchesPage() {
   };
 
   const detailsObject = getDetailsObject();
-  const detailsFormDisabled = !detailsObject;
   const selectedRegionName = regions.find((r) => r.id === (selectedRegionId || userRegionId))?.name || '';
-  const themedActionButtonClass = 'border-[#d4af37] text-[#1a3c34] hover:bg-[#d4af37]/20';
 
   useEffect(() => {
     fetchRegions();
@@ -110,25 +107,25 @@ export function ChurchesPage() {
     }
   }, [viewRegionId]);
 
- const fetchRegions = async () => {
-  try {
-    const response = await regionAPI.getRegions();
-    // Extract the array from response.data or response.data.regions
-    const data = Array.isArray(response.data) 
-      ? response.data 
-      : (response.data?.regions || []);
+  const fetchRegions = async () => {
+    try {
+      const response = await regionAPI.getRegions();
+      const data = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data?.regions || []);
+        
+      setRegions(data);
       
-    setRegions(data);
-    
-    if (!isSuperAdmin && userRegionId) {
-      setSelectedRegionId(userRegionId);
-      setViewRegionId(userRegionId);
+      if (!isSuperAdmin && userRegionId) {
+        setSelectedRegionId(userRegionId);
+        setViewRegionId(userRegionId);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch regions:', error);
+      setRegions([]);
     }
-  } catch (error: any) {
-    console.error('Failed to fetch regions:', error);
-    setRegions([]); // Keep it as an array to prevent crashes
-  }
-};
+  };
+
   const fetchChurches = async () => {
     try {
       const response = await churchAPI.getChurches(viewRegionId);
@@ -154,11 +151,7 @@ export function ChurchesPage() {
     }
 
     if (!regionIdToUse) {
-      if (isSuperAdmin) {
-        toast.error('Please select a region before adding a church.');
-      } else {
-        toast.error('Your account is not linked to a region. Ask a super admin to invite you again with a region.');
-      }
+      toast.error(isSuperAdmin ? 'Please select a region.' : 'Your account is not linked to a region.');
       return;
     }
 
@@ -189,20 +182,13 @@ export function ChurchesPage() {
         await churchAPI.updateChurch(createdId, profilePayload);
       }
 
-      toast.success(`Church added successfully${createdId ? ` (ID: ${createdId})` : '!'}`);
-      console.log('[Church] Create response', response.data);
-      
-      // Reset form
+      toast.success(`Church added successfully!`);
       setName('');
       setLocationLink('');
       setCreateProfile(emptyChurchProfile);
       
       if (viewRegionId === regionIdToUse) {
         fetchChurches();
-      }
-
-      if (createdId) {
-        setSelectedChurchId(createdId);
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to add church.');
@@ -211,23 +197,9 @@ export function ChurchesPage() {
     }
   };
 
-  const handleUpdateBasicChurch = async (church: Church) => {
-    try {
-      await churchAPI.updateChurch(church.id, {
-        name: church.name,
-        location_link: church.location_link || null,
-      });
-      toast.success('Church updated successfully.');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update church.');
-    }
-  };
-
   const handleDeleteChurch = async (churchId: string) => {
     const confirmed = window.confirm('Delete this church? This action cannot be undone.');
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
       await churchAPI.deleteChurch(churchId);
@@ -242,1287 +214,371 @@ export function ChurchesPage() {
     }
   };
 
-  const handleLoadChurchDetails = async (churchId: string) => {
-    if (!churchId) {
-      return;
-    }
-
+  const handleOpenEditModal = async (churchId: string) => {
+    if (!churchId) return;
+    setSelectedChurchId(churchId);
     try {
       const response = await churchAPI.getChurchById(churchId);
       const church = response?.data?.church || response?.data;
       setDetailsJson(JSON.stringify(church, null, 2));
-      if (church?.region_id) {
-        setSelectedRegionId(church.region_id);
-        if (!viewRegionId) {
-          setViewRegionId(church.region_id);
-        }
-      }
-      console.log('[Church] Details response', response.data);
-      toast.success('Church details loaded.');
+      setShowEditProfileModal(true);
     } catch (error: any) {
-      console.error('[Church] Details error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to load church details.');
-    }
-  };
-
-  const parseDetailsJson = (): Record<string, unknown> | null => {
-    try {
-      return JSON.parse(detailsJson);
-    } catch {
-      toast.error('Invalid JSON in details editor.');
-      return null;
+      toast.error('Failed to load church details.');
     }
   };
 
   const handleSaveDetails = async () => {
-    if (!selectedChurchId) {
-      toast.error('Select a church first.');
-      return;
-    }
-
-    const payload = parseDetailsJson();
-    if (!payload) {
-      return;
-    }
-
-    setSavingDetails(true);
+    if (!selectedChurchId) return;
     try {
-      const response = await churchAPI.updateChurch(selectedChurchId, payload);
-      console.log('[Church] Update details response', response.data);
-      toast.success('Church details updated successfully.');
-      if (viewRegionId) {
-        fetchChurches();
-      }
-    } catch (error: any) {
-      console.error('[Church] Update details error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to update church details.');
+      const payload = JSON.parse(detailsJson);
+      setSavingDetails(true);
+      await churchAPI.updateChurch(selectedChurchId, payload);
+      toast.success('Church profile updated successfully.');
+      setShowEditProfileModal(false);
+      fetchChurches();
+    } catch {
+      toast.error('Invalid JSON structure.');
     } finally {
       setSavingDetails(false);
-    }
-  };
-
-  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const payload = parseDetailsJson();
-    if (!payload) {
-      return;
-    }
-
-    const regionIdToUse = selectedRegionId || user?.region_id;
-    if (!regionIdToUse) {
-      toast.error('Please select or load a church with a region before uploading images.');
-      return;
-    }
-
-    setUploadingHero(true);
-    try {
-      const regionId = (payload.region_id as string | undefined) || viewRegionId || regionIdToUse;
-      const response = await uploadAPI.uploadImage(file, { region_id: regionId });
-      const secureUrl = response?.data?.asset?.secure_url;
-      if (!secureUrl) {
-        throw new Error('No uploaded image URL returned by backend.');
-      }
-
-      const nextPayload = { ...payload, hero_image: secureUrl };
-      const nextPayloadCompat = { ...nextPayload, heroImage: secureUrl };
-      setDetailsJson(JSON.stringify(nextPayloadCompat, null, 2));
-      toast.success('Hero image uploaded and added to details JSON.');
-      console.log('[Church] Hero image upload response', response.data);
-    } catch (error: any) {
-      console.error('[Church] Hero image upload error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to upload hero image.');
-    } finally {
-      setUploadingHero(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const payload = parseDetailsJson();
-    if (!payload) {
-      return;
-    }
-
-    const regionIdToUse = selectedRegionId || user?.region_id;
-    if (!regionIdToUse) {
-      toast.error('Please select or load a church with a region before uploading images.');
-      return;
-    }
-
-    setUploadingGallery(true);
-    try {
-      const regionId = (payload.region_id as string | undefined) || viewRegionId || regionIdToUse;
-      const response = await uploadAPI.uploadImage(file, { region_id: regionId });
-      const secureUrl = response?.data?.asset?.secure_url;
-      if (!secureUrl) {
-        throw new Error('No uploaded image URL returned by backend.');
-      }
-
-      const existingGallery = Array.isArray(payload.gallery) ? payload.gallery : [];
-      const nextGallery = [
-        ...existingGallery,
-        {
-          id: `g-${Date.now()}`,
-          url: secureUrl,
-          caption: 'New photo',
-        },
-      ];
-
-      const nextPayload = { ...payload, gallery: nextGallery };
-      setDetailsJson(JSON.stringify(nextPayload, null, 2));
-      toast.success('Gallery photo uploaded and added to details JSON.');
-      console.log('[Church] Gallery image upload response', response.data);
-    } catch (error: any) {
-      console.error('[Church] Gallery image upload error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to upload gallery image.');
-    } finally {
-      setUploadingGallery(false);
-      e.target.value = '';
     }
   };
 
   const uploadImageFile = async (file: File) => {
     const regionIdToUse = selectedRegionId || user?.region_id || viewRegionId;
     if (!regionIdToUse) {
-      toast.error('Please select a region before uploading images.');
+      toast.error('Please select a region before uploading.');
       return null;
     }
-
     const response = await uploadAPI.uploadImage(file, { region_id: regionIdToUse });
-    const secureUrl = response?.data?.asset?.secure_url;
-    if (!secureUrl) {
-      throw new Error('No uploaded image URL returned by backend.');
-    }
-
-    return secureUrl;
+    return response?.data?.asset?.secure_url || null;
   };
 
-  const handleCreateHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCreateImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: string) => {
     const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     setUploadingImage(true);
     try {
-      const secureUrl = await uploadImageFile(file);
-      if (secureUrl) {
-        setCreateProfile((p) => ({ ...p, heroImage: secureUrl }));
-        toast.success('Hero image uploaded successfully.');
+      const url = await uploadImageFile(file);
+      if (url) {
+        if (target === 'hero') setCreateProfile(p => ({ ...p, heroImage: url }));
+        if (target === 'pastor') setCreateProfile(p => ({ ...p, pastor: { ...p.pastor, image: url } }));
+        if (target === 'event') setCreateProfile(p => ({ ...p, events: [{ ...(p.events[0] || {}), image: url, id: `e-${Date.now()}` }] }));
+        if (target === 'gallery') setCreateProfile(p => ({ ...p, gallery: [{ ...(p.gallery[0] || {}), url, id: `g-${Date.now()}`, caption: 'Uploaded photo' }] }));
+        toast.success('Image uploaded successfully.');
       }
-    } catch (error: any) {
-      console.error('[Church] Create hero image upload error', error?.response?.data || error.message);
-      toast.error(error?.response?.data?.message || 'Failed to upload hero image.');
+    } catch {
+      toast.error('Image upload failed.');
     } finally {
       setUploadingImage(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleCreatePastorImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    setUploadingImage(true);
-    try {
-      const secureUrl = await uploadImageFile(file);
-      if (secureUrl) {
-        setCreateProfile((p) => ({
-          ...p,
-          pastor: {
-            ...p.pastor,
-            image: secureUrl,
-          },
-        }));
-        toast.success('Pastor image uploaded successfully.');
-      }
-    } catch (error: any) {
-      console.error('[Church] Create pastor image upload error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to upload pastor image.');
-    } finally {
-      setUploadingImage(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleCreateEventImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    setUploadingImage(true);
-    try {
-      const secureUrl = await uploadImageFile(file);
-      if (secureUrl) {
-        setCreateProfile((p) => ({
-          ...p,
-          events: [
-            {
-              ...(p.events[0] || {}),
-              image: secureUrl,
-              id: p.events[0]?.id || `e-${Date.now()}`,
-            },
-          ],
-        }));
-        toast.success('Event image uploaded successfully.');
-      }
-    } catch (error: any) {
-      console.error('[Church] Create event image upload error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to upload event image.');
-    } finally {
-      setUploadingImage(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleCreateGalleryFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    setUploadingImage(true);
-    try {
-      const secureUrl = await uploadImageFile(file);
-      if (secureUrl) {
-        setCreateProfile((p) => ({
-          ...p,
-          gallery: [
-            {
-              ...(p.gallery[0] || {}),
-              url: secureUrl,
-              caption: p.gallery[0]?.caption || '',
-              id: p.gallery[0]?.id || `g-${Date.now()}`,
-            },
-          ],
-        }));
-        toast.success('Gallery image uploaded successfully.');
-      }
-    } catch (error: any) {
-      console.error('[Church] Create gallery image upload error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to upload gallery image.');
-    } finally {
-      setUploadingImage(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleDetailsPastorImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    try {
-      const secureUrl = await uploadImageFile(file);
-      if (secureUrl) {
-        updateDetailsObject((draft) => {
-          draft.pastor = draft.pastor || {};
-          draft.pastor.image = secureUrl;
-        });
-        toast.success('Pastor image uploaded and added to details JSON.');
-      }
-    } catch (error: any) {
-      console.error('[Church] Details pastor image upload error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to upload pastor image.');
-    } finally {
-      e.target.value = '';
-    }
-  };
-
-  const handleDetailsEventImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    try {
-      const secureUrl = await uploadImageFile(file);
-      if (secureUrl) {
-        updateDetailsObject((draft) => {
-          const arr = Array.isArray(draft.events) ? draft.events : [];
-          arr[index] = {
-            ...(arr[index] || {}),
-            image: secureUrl,
-          };
-          draft.events = arr;
-        });
-        toast.success('Event image uploaded and added to details JSON.');
-      }
-    } catch (error: any) {
-      console.error('[Church] Details event image upload error', error?.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Failed to upload event image.');
-    } finally {
-      e.target.value = '';
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto p-4">
       <div>
-        <h1>Churches Management</h1>
-        <p className="text-muted-foreground">Regional and super admins can create, edit, delete, and update church details.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Churches Management</h1>
+        <p className="text-muted-foreground">Manage administrative operations, structural assets, and profiles.</p>
       </div>
 
-      <Tabs defaultValue="create">
-        <TabsList>
+      <Tabs defaultValue="create" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="create">Add Church</TabsTrigger>
           <TabsTrigger value="view">View / Edit / Delete</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="create" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Add New Church</CardTitle>
-              <CardDescription>Create church and get `church_id` for details updates.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateChurch} className="space-y-6">
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <Card className="shadow-sm">
-                    <CardHeader className="space-y-2">
-                      <CardTitle>Basic Information</CardTitle>
-                      <CardDescription>Enter the church name, region assignment and a short description.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="region">Region *</Label>
-                          {isSuperAdmin ? (
-                            <Select value={selectedRegionId} onValueChange={setSelectedRegionId}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a region" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {regions.map((region) => (
-                                  <SelectItem key={region.id} value={region.id}>
-                                    {region.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Input readOnly value={selectedRegionName || `Assigned region (${userRegionId})`} />
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="name">Church Name *</Label>
-                          <Input
-                            id="name"
-                            placeholder="Enter church name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="location">Location Link</Label>
-                          <Input
-                            id="location"
-                            placeholder="https://maps.google.com/..."
-                            value={locationLink}
-                            onChange={(e) => setLocationLink(e.target.value)}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Description</Label>
-                          <Textarea
-                            placeholder="Add a short summary for the church profile"
-                            rows={3}
-                            value={createProfile.description}
-                            onChange={(e) => setCreateProfile((p) => ({ ...p, description: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow-sm">
-                    <CardHeader className="space-y-2">
-                      <CardTitle>Location & Contact</CardTitle>
-                      <CardDescription>Complete location details and contact info for the new church.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Location</Label>
-                          <Input
-                            placeholder="Campus or building name"
-                            value={createProfile.location}
-                            onChange={(e) => setCreateProfile((p) => ({ ...p, location: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Address</Label>
-                          <Input
-                            placeholder="123 Main St, City, State"
-                            value={createProfile.address}
-                            onChange={(e) => setCreateProfile((p) => ({ ...p, address: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Phone</Label>
-                          <Input
-                            placeholder="(555) 123-4567"
-                            value={createProfile.phone}
-                            onChange={(e) => setCreateProfile((p) => ({ ...p, phone: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Email</Label>
-                          <Input
-                            type="email"
-                            placeholder="contact@church.org"
-                            value={createProfile.email}
-                            onChange={(e) => setCreateProfile((p) => ({ ...p, email: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Hero Image</Label>
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            disabled={uploadingImage}
-                            onChange={handleCreateHeroImageUpload}
-                          />
-                          {createProfile.heroImage ? (
-                            <p className="text-sm text-muted-foreground">Image selected and uploaded.</p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">Choose a local file for the hero image.</p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Map URL</Label>
-                          <Input
-                            placeholder="Google Maps embed link"
-                            value={createProfile.mapUrl}
-                            onChange={(e) => setCreateProfile((p) => ({ ...p, mapUrl: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card className="border-dashed">
-                  <CardHeader>
-                    <CardTitle>Church Profile During Creation</CardTitle>
-                    <CardDescription>Fill the full profile now so the church is complete immediately after creation.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Pastor Name</Label>
-                        <Input
-                          placeholder="Pastor name"
-                          value={createProfile.pastor.name}
-                          onChange={(e) => setCreateProfile((p) => ({ ...p, pastor: { ...p.pastor, name: e.target.value } }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Pastor Role</Label>
-                        <Input
-                          placeholder="Senior Pastor"
-                          value={createProfile.pastor.role}
-                          onChange={(e) => setCreateProfile((p) => ({ ...p, pastor: { ...p.pastor, role: e.target.value } }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Pastor Image</Label>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          disabled={uploadingImage}
-                          onChange={handleCreatePastorImageUpload}
-                        />
-                        {createProfile.pastor.image ? (
-                          <p className="text-sm text-muted-foreground">Pastor image selected and uploaded.</p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Choose a local file for the pastor image.</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Pastor Bio</Label>
-                        <Textarea
-                          placeholder="Short pastor bio"
-                          rows={2}
-                          value={createProfile.pastor.bio}
-                          onChange={(e) => setCreateProfile((p) => ({ ...p, pastor: { ...p.pastor, bio: e.target.value } }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>First Service Time</Label>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          <Input
-                            placeholder="Day"
-                            value={createProfile.serviceTimes[0]?.day || ''}
-                            onChange={(e) => setCreateProfile((p) => ({
-                              ...p,
-                              serviceTimes: [{ ...(p.serviceTimes[0] || {}), day: e.target.value, time: p.serviceTimes[0]?.time || '', type: p.serviceTimes[0]?.type || '' }],
-                            }))}
-                          />
-                          <Input
-                            type="time"
-                            placeholder="Time"
-                            value={createProfile.serviceTimes[0]?.time || ''}
-                            onChange={(e) => setCreateProfile((p) => ({
-                              ...p,
-                              serviceTimes: [{ ...(p.serviceTimes[0] || {}), time: e.target.value, day: p.serviceTimes[0]?.day || '', type: p.serviceTimes[0]?.type || '' }],
-                            }))}
-                          />
-                          <Input
-                            placeholder="Type"
-                            value={createProfile.serviceTimes[0]?.type || ''}
-                            onChange={(e) => setCreateProfile((p) => ({
-                              ...p,
-                              serviceTimes: [{ ...(p.serviceTimes[0] || {}), type: e.target.value, day: p.serviceTimes[0]?.day || '', time: p.serviceTimes[0]?.time || '' }],
-                            }))}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>First Gallery Item</Label>
-                        <div className="grid grid-cols-1 gap-2">
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            disabled={uploadingImage}
-                            onChange={handleCreateGalleryFileUpload}
-                          />
-                          {createProfile.gallery[0]?.url ? (
-                            <p className="text-sm text-muted-foreground">Gallery image selected and uploaded.</p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">Choose a local file for the first gallery image.</p>
-                          )}
-                          <Input
-                            placeholder="Caption"
-                            value={createProfile.gallery[0]?.caption || ''}
-                            onChange={(e) => setCreateProfile((p) => ({
-                              ...p,
-                              gallery: [{ ...(p.gallery[0] || {}), caption: e.target.value, url: p.gallery[0]?.url || '', id: p.gallery[0]?.id || `g-${Date.now()}` }],
-                            }))}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="sticky bottom-0 z-10 rounded-b-xl border-t border-muted bg-background/95 p-4 backdrop-blur md:flex md:items-center md:justify-end md:gap-3">
-                  <Button type="button" variant="outline" onClick={() => {
-                    setName('');
-                    setLocationLink('');
-                    setCreateProfile(emptyChurchProfile);
-                    if (!isSuperAdmin && userRegionId) {
-                      setSelectedRegionId(userRegionId);
-                    }
-                  }}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={loading}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    {loading ? 'Adding...' : 'Add Church'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="view" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Churches</CardTitle>
-              <CardDescription>Update basic info or delete a church.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="viewRegion">Select Region</Label>
-                  <Select
-                    value={viewRegionId}
-                    onValueChange={setViewRegionId}
-                    disabled={!isSuperAdmin}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a region" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem key={region.id} value={region.id}>
-                          {region.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {viewRegionId && (
-                  <div className="space-y-4 mt-6">
-                    {churches.length === 0 ? (
-                      <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                        <ChurchIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p className="text-muted-foreground">No churches in this region yet.</p>
-                      </div>
+        {/* CREATE TAB */}
+        <TabsContent value="create" className="space-y-6 mt-4">
+          <form onSubmit={handleCreateChurch} className="space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <Card className="border border-border shadow-sm">
+                <CardHeader>
+                  <CardTitle>Basic Information</CardTitle>
+                  <CardDescription>Setup core settings and assignments.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Region *</Label>
+                    {isSuperAdmin ? (
+                      <Select value={selectedRegionId} onValueChange={setSelectedRegionId}>
+                        <SelectTrigger className="w-full border border-input bg-background px-3 py-2 flex justify-between items-center rounded-md focus:ring-2 focus:ring-primary">
+                          <SelectValue placeholder="Select an administrative region" />
+                          <ChevronDown className="w-4 h-4 opacity-60" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {regions.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {churches.map((church) => (
-                          <Card key={church.id}>
-                            <CardContent className="pt-6 space-y-3">
-                              <div className="space-y-2">
-                                <Label>Church Name</Label>
-                                <Input
-                                  value={church.name}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    setChurches((prev) => prev.map((c) => (c.id === church.id ? { ...c, name: value } : c)));
-                                  }}
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label>Location Link</Label>
-                                <Input
-                                  value={church.location_link || ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    setChurches((prev) => prev.map((c) => (c.id === church.id ? { ...c, location_link: value } : c)));
-                                  }}
-                                />
-                              </div>
-
-                              <div className="text-xs text-muted-foreground">Church ID: {church.id}</div>
-
-                              {church.location_link && (
-                                <a
-                                  href={church.location_link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-sm hover:underline"
-                                  style={{ color: '#d4af37' }}
-                                >
-                                  <MapPin className="w-4 h-4" />
-                                  View Location
-                                </a>
-                              )}
-
-                              <div className="flex gap-2">
-                                <Button type="button" onClick={() => handleUpdateBasicChurch(church)}>
-                                  <Save className="w-4 h-4 mr-2" />
-                                  Save Changes
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant={isSuperAdmin ? 'destructive' : 'outline'}
-                                  className={!isSuperAdmin ? themedActionButtonClass : undefined}
-                                  onClick={() => handleDeleteChurch(church.id)}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Church
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedChurchId(church.id);
-                                    handleLoadChurchDetails(church.id);
-                                  }}
-                                >
-                                  Edit Full Profile
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-
-                    {selectedChurchId && (
-                      <Card className="border-dashed">
-                        <CardHeader>
-                          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                            <div>
-                              <CardTitle>Edit Full Church Profile</CardTitle>
-                              <CardDescription>Edit all church details here, then save.</CardDescription>
-                            </div>
-                            <div className="flex flex-col gap-2 sm:flex-row">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => selectedChurchId && handleLoadChurchDetails(selectedChurchId)}
-                                disabled={!selectedChurchId}
-                              >
-                                Reload Profile
-                              </Button>
-                              <Button
-                                type="button"
-                                onClick={handleSaveDetails}
-                                disabled={savingDetails || !selectedChurchId}
-                              >
-                                <Save className="w-4 h-4 mr-2" />
-                                {savingDetails ? 'Saving...' : 'Save Full Profile'}
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          {detailsFormDisabled && (
-                            <p className="text-sm text-red-600">Unable to load church profile data. Click Edit Full Profile again.</p>
-                          )}
-
-                          <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <Card className="border border-muted p-4 shadow-sm">
-                              <CardHeader>
-                                <CardTitle>Basic Information</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-2">
-                                    <Label>Church ID</Label>
-                                    <Input
-                                      value={detailsObject?.id || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.id = e.target.value; })}
-                                      placeholder="north"
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Church Name</Label>
-                                    <Input
-                                      value={detailsObject?.name || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.name = e.target.value; })}
-                                      placeholder="North Campus"
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Location</Label>
-                                    <Input
-                                      value={detailsObject?.location || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.location = e.target.value; })}
-                                      placeholder="Highland Park"
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Address</Label>
-                                    <Input
-                                      value={detailsObject?.address || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.address = e.target.value; })}
-                                      placeholder="123 Highland Avenue"
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Phone</Label>
-                                    <Input
-                                      value={detailsObject?.phone || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.phone = e.target.value; })}
-                                      placeholder="(555) 123-4567"
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Email</Label>
-                                    <Input
-                                      value={detailsObject?.email || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.email = e.target.value; })}
-                                      placeholder="north@missionfornation.org"
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Location Link</Label>
-                                    <Input
-                                      value={detailsObject?.location_link || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.location_link = e.target.value; })}
-                                      placeholder="https://maps.google.com/?q=..."
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <Card className="border border-muted p-4 shadow-sm">
-                              <CardHeader>
-                                <CardTitle>Location & Media</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 gap-4">
-                                  <div className="space-y-2">
-                                    <Label>Hero Image</Label>
-                                    <Input
-                                      type="file"
-                                      accept="image/*"
-                                      disabled={detailsFormDisabled || uploadingHero}
-                                      onChange={handleHeroImageUpload}
-                                    />
-                                    {detailsObject?.heroImage ? (
-                                      <p className="text-sm text-muted-foreground">Hero image selected and uploaded.</p>
-                                    ) : (
-                                      <p className="text-sm text-muted-foreground">Choose a local file to set the hero image.</p>
-                                    )}
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Map URL (Embed)</Label>
-                                    <Input
-                                      value={detailsObject?.mapUrl || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.mapUrl = e.target.value; })}
-                                      placeholder="https://www.google.com/maps/embed?..."
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Description</Label>
-                                    <Textarea
-                                      value={detailsObject?.description || ''}
-                                      onChange={(e) => updateDetailsObject((draft) => { draft.description = e.target.value; })}
-                                      placeholder="Brief church summary"
-                                      rows={4}
-                                      disabled={detailsFormDisabled}
-                                    />
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </section>
-
-                          <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            <Card className="border border-muted p-4 shadow-sm">
-                              <CardHeader>
-                                <CardTitle>Pastor</CardTitle>
-                              </CardHeader>
-                              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <Label>Pastor Name</Label>
-                                  <Input
-                                    value={detailsObject?.pastor?.name || ''}
-                                    onChange={(e) => updateDetailsObject((draft) => {
-                                      draft.pastor = draft.pastor || {};
-                                      draft.pastor.name = e.target.value;
-                                    })}
-                                    disabled={detailsFormDisabled}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label>Pastor Role</Label>
-                                  <Input
-                                    value={detailsObject?.pastor?.role || ''}
-                                    onChange={(e) => updateDetailsObject((draft) => {
-                                      draft.pastor = draft.pastor || {};
-                                      draft.pastor.role = e.target.value;
-                                    })}
-                                    disabled={detailsFormDisabled}
-                                  />
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                  <Label>Pastor Image</Label>
-                                  <div className="space-y-2">
-                                    <Input
-                                      type="file"
-                                      accept="image/*"
-                                      disabled={detailsFormDisabled}
-                                      onChange={handleDetailsPastorImageUpload}
-                                    />
-                                    {detailsObject?.pastor?.image ? (
-                                      <p className="text-sm text-muted-foreground">Pastor image selected and uploaded.</p>
-                                    ) : (
-                                      <p className="text-sm text-muted-foreground">Choose a local file to set the pastor image.</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                  <Label>Pastor Bio</Label>
-                                  <Textarea
-                                    value={detailsObject?.pastor?.bio || ''}
-                                    onChange={(e) => updateDetailsObject((draft) => {
-                                      draft.pastor = draft.pastor || {};
-                                      draft.pastor.bio = e.target.value;
-                                    })}
-                                    rows={3}
-                                    disabled={detailsFormDisabled}
-                                  />
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <div className="space-y-6">
-                              <Card className="border border-muted p-4 shadow-sm">
-                                <CardHeader>
-                                  <CardTitle>Service Times</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">Manage recurring services.</p>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      className={themedActionButtonClass}
-                                      disabled={detailsFormDisabled}
-                                      onClick={() => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.serviceTimes) ? draft.serviceTimes : [];
-                                        arr.push({ day: '', time: '', type: '' });
-                                        draft.serviceTimes = arr;
-                                      })}
-                                    >
-                                      Add Service Time
-                                    </Button>
-                                  </div>
-                                  {(Array.isArray(detailsObject?.serviceTimes) ? detailsObject?.serviceTimes : []).map((item: any, index: number) => (
-                                    <div key={`st-${index}`} className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                      <Input
-                                        value={item?.day || ''}
-                                        placeholder="Day"
-                                        disabled={detailsFormDisabled}
-                                        onChange={(e) => updateDetailsObject((draft) => {
-                                          const arr = Array.isArray(draft.serviceTimes) ? draft.serviceTimes : [];
-                                          arr[index] = { ...(arr[index] || {}), day: e.target.value };
-                                          draft.serviceTimes = arr;
-                                        })}
-                                      />
-                                      <Input
-                                        type="time"
-                                        value={item?.time || ''}
-                                        placeholder="Time"
-                                        disabled={detailsFormDisabled}
-                                        onChange={(e) => updateDetailsObject((draft) => {
-                                          const arr = Array.isArray(draft.serviceTimes) ? draft.serviceTimes : [];
-                                          arr[index] = { ...(arr[index] || {}), time: e.target.value };
-                                          draft.serviceTimes = arr;
-                                        })}
-                                      />
-                                      <Input
-                                        value={item?.type || ''}
-                                        placeholder="Type"
-                                        disabled={detailsFormDisabled}
-                                        onChange={(e) => updateDetailsObject((draft) => {
-                                          const arr = Array.isArray(draft.serviceTimes) ? draft.serviceTimes : [];
-                                          arr[index] = { ...(arr[index] || {}), type: e.target.value };
-                                          draft.serviceTimes = arr;
-                                        })}
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        className={themedActionButtonClass}
-                                        disabled={detailsFormDisabled}
-                                        onClick={() => updateDetailsObject((draft) => {
-                                          const arr = Array.isArray(draft.serviceTimes) ? draft.serviceTimes : [];
-                                          draft.serviceTimes = arr.filter((_: unknown, i: number) => i !== index);
-                                        })}
-                                      >
-                                        Remove
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </CardContent>
-                              </Card>
-                            </div>
-                          </section>
-
-                          <section className="grid grid-cols-1 gap-6">
-                            <Card className="border border-muted p-4 shadow-sm">
-                              <CardHeader>
-                                <CardTitle>Announcements & Events</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-6">
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <h4>Announcements</h4>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      className={themedActionButtonClass}
-                                      disabled={detailsFormDisabled}
-                                      onClick={() => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.announcements) ? draft.announcements : [];
-                                        arr.push({ id: `a-${Date.now()}`, title: '', date: '', content: '', priority: 'normal' });
-                                        draft.announcements = arr;
-                                      })}
-                                    >
-                                      Add Announcement
-                                    </Button>
-                                  </div>
-                                  {(Array.isArray(detailsObject?.announcements) ? detailsObject?.announcements : []).map((item: any, index: number) => (
-                                    <div key={`a-${index}`} className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                                      <Input value={item?.title || ''} placeholder="Title" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.announcements) ? draft.announcements : [];
-                                        arr[index] = { ...(arr[index] || {}), title: e.target.value };
-                                        draft.announcements = arr;
-                                      })} />
-                                      <Input type="date" value={item?.date || ''} placeholder="Date" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.announcements) ? draft.announcements : [];
-                                        arr[index] = { ...(arr[index] || {}), date: e.target.value };
-                                        draft.announcements = arr;
-                                      })} />
-                                      <Input value={item?.priority || ''} placeholder="Priority" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.announcements) ? draft.announcements : [];
-                                        arr[index] = { ...(arr[index] || {}), priority: e.target.value };
-                                        draft.announcements = arr;
-                                      })} />
-                                      <Input value={item?.content || ''} placeholder="Content" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.announcements) ? draft.announcements : [];
-                                        arr[index] = { ...(arr[index] || {}), content: e.target.value };
-                                        draft.announcements = arr;
-                                      })} />
-                                      <Button type="button" variant="outline" className={themedActionButtonClass} disabled={detailsFormDisabled} onClick={() => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.announcements) ? draft.announcements : [];
-                                        draft.announcements = arr.filter((_: unknown, i: number) => i !== index);
-                                      })}>Remove</Button>
-                                    </div>
-                                  ))}
-                                </div>
-
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <h4>Events</h4>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      className={themedActionButtonClass}
-                                      disabled={detailsFormDisabled}
-                                      onClick={() => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.events) ? draft.events : [];
-                                        arr.push({ id: `e-${Date.now()}`, title: '', date: '', time: '', image: '', description: '' });
-                                        draft.events = arr;
-                                      })}
-                                    >
-                                      Add Event
-                                    </Button>
-                                  </div>
-                                  {(Array.isArray(detailsObject?.events) ? detailsObject?.events : []).map((item: any, index: number) => (
-                                    <div key={`e-${index}`} className="grid grid-cols-1 md:grid-cols-6 gap-2">
-                                      <Input value={item?.title || ''} placeholder="Title" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.events) ? draft.events : [];
-                                        arr[index] = { ...(arr[index] || {}), title: e.target.value };
-                                        draft.events = arr;
-                                      })} />
-                                      <Input type="date" value={item?.date || ''} placeholder="Date" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.events) ? draft.events : [];
-                                        arr[index] = { ...(arr[index] || {}), date: e.target.value };
-                                        draft.events = arr;
-                                      })} />
-                                      <Input type="time" value={item?.time || ''} placeholder="Time" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.events) ? draft.events : [];
-                                        arr[index] = { ...(arr[index] || {}), time: e.target.value };
-                                        draft.events = arr;
-                                      })} />
-                                      <div className="space-y-2">
-                                        <Input
-                                          type="file"
-                                          accept="image/*"
-                                          disabled={detailsFormDisabled}
-                                          onChange={(e) => handleDetailsEventImageUpload(e, index)}
-                                        />
-                                        {item?.image ? (
-                                          <p className="text-xs text-muted-foreground">Event image selected.</p>
-                                        ) : null}
-                                      </div>
-                                      <Input value={item?.description || ''} placeholder="Description" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.events) ? draft.events : [];
-                                        arr[index] = { ...(arr[index] || {}), description: e.target.value };
-                                        draft.events = arr;
-                                      })} />
-                                      <Button type="button" variant="outline" className={themedActionButtonClass} disabled={detailsFormDisabled} onClick={() => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.events) ? draft.events : [];
-                                        draft.events = arr.filter((_: unknown, i: number) => i !== index);
-                                      })}>Remove</Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </CardContent>
-                            </Card>
-
-                            <Card className="border border-muted p-4 shadow-sm">
-                              <CardHeader>
-                                <CardTitle>Ministries & Gallery</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-6">
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <h4>Ministries</h4>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      className={themedActionButtonClass}
-                                      disabled={detailsFormDisabled}
-                                      onClick={() => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.ministries) ? draft.ministries : [];
-                                        arr.push({ id: `m-${Date.now()}`, name: '', description: '', icon: '' });
-                                        draft.ministries = arr;
-                                      })}
-                                    >
-                                      Add Ministry
-                                    </Button>
-                                  </div>
-                                  {(Array.isArray(detailsObject?.ministries) ? detailsObject?.ministries : []).map((item: any, index: number) => (
-                                    <div key={`m-${index}`} className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                                      <Input value={item?.name || ''} placeholder="Name" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.ministries) ? draft.ministries : [];
-                                        arr[index] = { ...(arr[index] || {}), name: e.target.value };
-                                        draft.ministries = arr;
-                                      })} />
-                                      <Input value={item?.description || ''} placeholder="Description" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.ministries) ? draft.ministries : [];
-                                        arr[index] = { ...(arr[index] || {}), description: e.target.value };
-                                        draft.ministries = arr;
-                                      })} />
-                                      <Input value={item?.icon || ''} placeholder="Icon" disabled={detailsFormDisabled} onChange={(e) => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.ministries) ? draft.ministries : [];
-                                        arr[index] = { ...(arr[index] || {}), icon: e.target.value };
-                                        draft.ministries = arr;
-                                      })} />
-                                      <Button type="button" variant="outline" className={themedActionButtonClass} disabled={detailsFormDisabled} onClick={() => updateDetailsObject((draft) => {
-                                        const arr = Array.isArray(draft.ministries) ? draft.ministries : [];
-                                        draft.ministries = arr.filter((_: unknown, i: number) => i !== index);
-                                      })}>Remove</Button>
-                                    </div>
-                                  ))}
-                                </div>
-
-                                <div className="space-y-3">
-                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <h4>Gallery</h4>
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                      <Input
-                                        type="file"
-                                        accept="image/*"
-                                        disabled={detailsFormDisabled || uploadingGallery}
-                                        onChange={handleGalleryImageUpload}
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        className={themedActionButtonClass}
-                                        disabled={detailsFormDisabled}
-                                        onClick={() => updateDetailsObject((draft) => {
-                                          const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
-                                          arr.push({ id: `g-${Date.now()}`, url: '', caption: '' });
-                                          draft.gallery = arr;
-                                        })}
-                                      >
-                                        Add Gallery Image
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  {(Array.isArray(detailsObject?.gallery) ? detailsObject?.gallery : []).map((item: any, index: number) => (
-                                    <Card key={`g-${index}`} className="p-4">
-                                      <div className="flex flex-col sm:flex-row gap-4">
-                                        <div className="flex-shrink-0">
-                                          <ImageWithFallback
-                                            src={item?.url || ''}
-                                            alt={item?.caption || 'Gallery image'}
-                                            className="w-24 h-24 object-cover rounded-md border"
-                                          />
-                                        </div>
-                                        <div className="flex-1 space-y-2">
-                                          {editingGalleryCaption === index ? (
-                                            <div className="space-y-2">
-                                              <Input
-                                                value={item?.caption || ''}
-                                                placeholder="Enter caption"
-                                                onChange={(e) => updateDetailsObject((draft) => {
-                                                  const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
-                                                  arr[index] = { ...(arr[index] || {}), caption: e.target.value };
-                                                  draft.gallery = arr;
-                                                })}
-                                                autoFocus
-                                                onKeyDown={(e) => {
-                                                  if (e.key === 'Enter') {
-                                                    setEditingGalleryCaption(null);
-                                                  } else if (e.key === 'Escape') {
-                                                    setEditingGalleryCaption(null);
-                                                  }
-                                                }}
-                                              />
-                                              <div className="flex gap-2">
-                                                <Button
-                                                  type="button"
-                                                  size="sm"
-                                                  onClick={() => setEditingGalleryCaption(null)}
-                                                >
-                                                  Save
-                                                </Button>
-                                                <Button
-                                                  type="button"
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() => setEditingGalleryCaption(null)}
-                                                >
-                                                  Cancel
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <div className="space-y-2">
-                                              <p className="text-sm font-medium">
-                                                {item?.caption || 'No caption'}
-                                              </p>
-                                              <p className="text-xs text-muted-foreground">
-                                                ID: {item?.id || 'No ID'}
-                                              </p>
-                                              <div className="flex gap-2">
-                                                <Button
-                                                  type="button"
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() => setEditingGalleryCaption(index)}
-                                                >
-                                                  Edit Caption
-                                                </Button>
-                                                <Button
-                                                  type="button"
-                                                  variant="destructive"
-                                                  size="sm"
-                                                  onClick={() => updateDetailsObject((draft) => {
-                                                    const arr = Array.isArray(draft.gallery) ? draft.gallery : [];
-                                                    draft.gallery = arr.filter((_: unknown, i: number) => i !== index);
-                                                  })}
-                                                >
-                                                  <Trash2 className="w-4 h-4 mr-1" />
-                                                  Delete
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </Card>
-                                  ))}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </section>
-                        </CardContent>
-                      </Card>
+                      <Input readOnly value={selectedRegionName || `Region code: ${userRegionId}`} className="border border-input bg-muted" />
                     )}
                   </div>
-                )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Church Name *</Label>
+                    <Input id="name" placeholder="Enter full church name" value={name} onChange={(e) => setName(e.target.value)} className="border border-input focus:border-primary" required />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location Map Link</Label>
+                    <Input id="location" placeholder="https://maps.google.com/..." value={locationLink} onChange={(e) => setLocationLink(e.target.value)} className="border border-input" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Short Description</Label>
+                    <Textarea placeholder="Summary of the church mission..." rows={3} value={createProfile.description} onChange={(e) => setCreateProfile(p => ({ ...p, description: e.target.value }))} className="border border-input" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border shadow-sm">
+                <CardHeader>
+                  <CardTitle>Contact Details & Cover</CardTitle>
+                  <CardDescription>Configure localization criteria.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Campus/Building</Label>
+                      <Input placeholder="Main Hall, East Wing" value={createProfile.location} onChange={(e) => setCreateProfile(p => ({ ...p, location: e.target.value }))} className="border border-input" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Street Address</Label>
+                      <Input placeholder="123 Main St" value={createProfile.address} onChange={(e) => setCreateProfile(p => ({ ...p, address: e.target.value }))} className="border border-input" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Phone Line</Label>
+                      <Input placeholder="+251..." value={createProfile.phone} onChange={(e) => setCreateProfile(p => ({ ...p, phone: e.target.value }))} className="border border-input" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email Address</Label>
+                      <Input type="email" placeholder="office@church.org" value={createProfile.email} onChange={(e) => setCreateProfile(p => ({ ...p, email: e.target.value }))} className="border border-input" />
+                    </div>
+                  </div>
+                  <div className="space-y-2 pt-2">
+                    <Label>Hero Banner Image</Label>
+                    <Input type="file" accept="image/*" disabled={uploadingImage} onChange={(e) => handleCreateImageUpload(e, 'hero')} className="border border-input cursor-pointer" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* INTEGRATED ADD SECTIONS */}
+            <Card className="border border-dashed border-muted-foreground/50 shadow-sm">
+              <CardHeader className="bg-muted/30">
+                <CardTitle className="text-xl flex items-center gap-2"><Plus className="w-5 h-5 text-primary" /> Initial Profile Attachments</CardTitle>
+                <CardDescription>Initialize metadata structural elements alongside the profile definition.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Pastor Details */}
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><ChurchIcon className="w-4 h-4" /> Pastor Personnel</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs">Full Name</Label>
+                        <Input placeholder="Pastor Name" value={createProfile.pastor.name} onChange={(e) => setCreateProfile(p => ({ ...p, pastor: { ...p.pastor, name: e.target.value } }))} className="border border-input" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Role Title</Label>
+                        <Input placeholder="Lead / Associate Pastor" value={createProfile.pastor.role} onChange={(e) => setCreateProfile(p => ({ ...p, pastor: { ...p.pastor, role: e.target.value } }))} className="border border-input" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Personnel Image</Label>
+                        <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'pastor')} className="border border-input text-xs" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Announcements */}
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Megaphone className="w-4 h-4" /> Primary Announcement</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs">Bulletin Title</Label>
+                        <Input placeholder="Notice header" value={createProfile.announcements[0]?.title || ''} onChange={(e) => setCreateProfile(p => ({ ...p, announcements: [{ ...(p.announcements[0] || {}), title: e.target.value, id: `a-${Date.now()}` }] }))} className="border border-input" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Bulletin Text Content</Label>
+                        <Textarea placeholder="Provide notice breakdown details..." rows={2} value={createProfile.announcements[0]?.content || ''} onChange={(e) => setCreateProfile(p => ({ ...p, announcements: [{ ...(p.announcements[0] || {}), content: e.target.value }] }))} className="border border-input" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Events */}
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Calendar className="w-4 h-4" /> Key Event</h3>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Event Title</Label>
+                          <Input placeholder="Conference name" value={createProfile.events[0]?.title || ''} onChange={(e) => setCreateProfile(p => ({ ...p, events: [{ ...(p.events[0] || {}), title: e.target.value, id: `e-${Date.now()}` }] }))} className="border border-input" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Date Scheduling</Label>
+                          <Input type="date" value={createProfile.events[0]?.date || ''} onChange={(e) => setCreateProfile(p => ({ ...p, events: [{ ...(p.events[0] || {}), date: e.target.value }] }))} className="border border-input" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Event Poster Image</Label>
+                        <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'event')} className="border border-input text-xs" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Gallery */}
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Image className="w-4 h-4" /> Gallery Exhibition</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs">Media File Upload</Label>
+                        <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'gallery')} className="border border-input text-xs" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Media Description Caption</Label>
+                        <Input placeholder="Altar view, community baptism photos..." value={createProfile.gallery[0]?.caption || ''} onChange={(e) => setCreateProfile(p => ({ ...p, gallery: [{ ...(p.gallery[0] || {}), caption: e.target.value }] }))} className="border border-input" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={loading} className="px-8 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
+                {loading ? 'Processing...' : <> <Save className="w-4 h-4" /> Register New Church </>}
+              </Button>
+            </div>
+          </form>
+        </TabsContent>
+
+        {/* VIEW / INTERACTIVE ACTIONS TAB */}
+        <TabsContent value="view" className="space-y-4 mt-4">
+          <Card className="border border-border shadow-sm">
+            <CardHeader>
+              <CardTitle>Registered Network Registry</CardTitle>
+              <CardDescription>Select a target system domain context to execute operational reviews.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2 max-w-sm">
+                <Label>Filter Registry View by Region Context</Label>
+                <Select value={viewRegionId} onValueChange={setViewRegionId}>
+                  <SelectTrigger className="w-full border border-input bg-background px-3 py-2 flex justify-between items-center rounded-md">
+                    <SelectValue placeholder="Choose a region to load assets" />
+                    <ChevronDown className="w-4 h-4 opacity-60" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {churches.length === 0 ? (
+                <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
+                  No active church items associated with the current configuration context.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-2">
+                  {churches.map((church) => (
+                    <div key={church.id} className="p-4 rounded-xl border border-border bg-card hover:shadow-md transition flex flex-col justify-between space-y-4">
+                      <div>
+                        <h4 className="font-bold text-lg text-foreground flex items-center gap-2"><ChurchIcon className="w-5 h-5 text-primary" /> {church.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> System ID Reference: {church.id}</p>
+                      </div>
+                      <div className="flex items-center gap-2 pt-2 border-t border-border">
+                        <Button variant="outline" size="sm" onClick={() => handleOpenEditModal(church.id)} className="flex-1 flex items-center gap-1 text-xs border border-input hover:bg-accent">
+                          <Edit className="w-3.5 h-3.5 text-primary" /> Edit Full Profile
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteChurch(church.id)} className="px-3 bg-destructive hover:bg-destructive/90">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* POPPING SCREEN POPUP MODAL (DIALOG OVERLAY) */}
+      <Dialog open={showEditProfileModal} onOpenChange={setShowEditProfileModal}>
+        <DialogContent className="sm:max-w-[700px] h-[85vh] flex flex-col p-0 bg-background border border-border shadow-2xl rounded-xl">
+          <div className="p-6 border-b border-border bg-muted/20">
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2"><Edit className="w-6 h-6 text-primary" /> Core Profile Entity Modeler</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">Directly update parameters using structured configurations or direct payload manipulation maps.</DialogDescription>
+          </div>
+
+          <ScrollArea className="flex-1 p-6">
+            <div className="space-y-6 pr-2">
+              <Tabs defaultValue="form" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 max-w-xs mb-4">
+                  <TabsTrigger value="form">Structured Editor</TabsTrigger>
+                  <TabsTrigger value="json">Raw JSON Payload</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="form" className="space-y-4">
+                  {detailsObject && !detailsFormDisabled ? (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold">Location Building Name</Label>
+                          <Input value={detailsObject.location || ''} onChange={(e) => updateDetailsObject(d => { d.location = e.target.value; })} className="border border-input" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold">Street Address Map Line</Label>
+                          <Input value={detailsObject.address || ''} onChange={(e) => updateDetailsObject(d => { d.address = e.target.value; })} className="border border-input" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Church Description Metadata Profile</Label>
+                        <Textarea rows={3} value={detailsObject.description || ''} onChange={(e) => updateDetailsObject(d => { d.description = e.target.value; })} className="border border-input" />
+                      </div>
+
+                      {/* Structural Subsection Hooks */}
+                      <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
+                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><ChurchIcon className="w-4 h-4" /> Pastor Core Assigned Personnel</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Ecclesiastical Title Name</Label>
+                            <Input value={detailsObject.pastor?.name || ''} onChange={(e) => updateDetailsObject(d => { d.pastor = { ...(d.pastor || {}), name: e.target.value }; })} className="border border-input text-sm" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Assigned Office Role</Label>
+                            <Input value={detailsObject.pastor?.role || ''} onChange={(e) => updateDetailsObject(d => { d.pastor = { ...(d.pastor || {}), role: e.target.value }; })} className="border border-input text-sm" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 border border-destructive/50 text-destructive rounded-lg bg-destructive/10 text-sm">
+                      Unable to parse structural components. Correct raw compilation errors inside the Raw JSON configuration map template viewport.
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="json" className="space-y-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Raw Data Tree Configuration Grid</Label>
+                  <Textarea value={detailsJson} onChange={(e) => setDetailsJson(e.target.value)} rows={15} className="font-mono text-xs border border-input p-4 bg-muted/40 focus-visible:ring-1 focus-visible:ring-primary rounded-md" />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </ScrollArea>
+
+          <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-3 rounded-b-xl">
+            <Button variant="outline" onClick={() => setShowEditProfileModal(false)} className="border border-input hover:bg-accent">Dismiss Window</Button>
+            <Button onClick={handleSaveDetails} disabled={savingDetails} className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-6 flex items-center gap-2">
+              {savingDetails ? 'Saving Modifications...' : <> <Save className="w-4 h-4" /> Commit System Mutations </>}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
