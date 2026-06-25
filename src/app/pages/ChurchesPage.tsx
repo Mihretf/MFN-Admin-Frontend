@@ -468,7 +468,6 @@ export function ChurchesPage() {
                 <Select value={viewRegionId} onValueChange={setViewRegionId}>
                   <SelectTrigger className="w-full border border-input bg-background px-3 py-2 flex justify-between items-center rounded-md">
                     <SelectValue placeholder="Choose a region to load assets" />
-                    <ChevronDown className="w-4 h-4 opacity-60" />
                   </SelectTrigger>
                   <SelectContent>
                     {regions.map((r) => (
@@ -488,7 +487,6 @@ export function ChurchesPage() {
                     <div key={church.id} className="p-4 rounded-xl border border-border bg-card hover:shadow-md transition flex flex-col justify-between space-y-4">
                       <div>
                         <h4 className="font-bold text-lg text-foreground flex items-center gap-2"><ChurchIcon className="w-5 h-5 text-primary" /> {church.name}</h4>
-                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> System ID Reference: {church.id}</p>
                       </div>
                       <div className="flex items-center gap-2 pt-2 border-t border-border">
                         <Button variant="outline" size="sm" onClick={() => handleOpenEditModal(church.id)} className="flex-1 flex items-center gap-1 text-xs border border-input hover:bg-accent">
