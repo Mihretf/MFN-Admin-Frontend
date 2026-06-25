@@ -304,7 +304,6 @@ export function ChurchesPage() {
                       <Select value={selectedRegionId} onValueChange={setSelectedRegionId}>
                         <SelectTrigger className="w-full border border-input bg-background px-3 py-2 flex justify-between items-center rounded-md focus:ring-2 focus:ring-primary">
                           <SelectValue placeholder="Select an administrative region" />
-                          <ChevronDown className="w-4 h-4 opacity-60" />
                         </SelectTrigger>
                         <SelectContent>
                           {regions.map((r) => (
