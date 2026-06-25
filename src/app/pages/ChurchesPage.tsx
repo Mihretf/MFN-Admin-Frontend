@@ -515,7 +515,7 @@ export function ChurchesPage() {
             <DialogDescription className="text-sm text-muted-foreground mt-1"></DialogDescription>
           </div>
 
-          <ScrollArea className="flex-1 p-6">
+          <div className="flex-1 overflow-y-auto p-6">
             <div className="space-y-6 pr-2">
               <Tabs defaultValue="form" className="w-full">
                 <TabsList className="grid w-full grid-cols-1 max-w-xs mb-4">
@@ -689,7 +689,7 @@ export function ChurchesPage() {
                 </TabsContent>
               </Tabs>
             </div>
-          </ScrollArea>
+          </div>
 
           <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-3 rounded-b-xl">
             <Button variant="outline" onClick={() => setShowEditProfileModal(false)} className="border border-input hover:bg-accent">Exit</Button>
