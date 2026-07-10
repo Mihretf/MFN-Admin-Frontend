@@ -40,11 +40,13 @@ const emptyChurchProfile = {
     image: '',
     bio: '',
   },
-  serviceTimes: [{ day: '', time: '', type: '' }],
-  announcements: [{ id: '', title: '', date: '', content: '', priority: 'normal' }],
-  events: [{ id: '', title: '', date: '', time: '', image: '', description: '' }],
-  ministries: [{ id: '', name: '', description: '', icon: '' }],
-  gallery: [{ id: '', url: '', caption: '' }],
+  serviceTimes: [{ id: 'service-1', day: '', time: '', type: '' }],
+  announcements: [{ id: 'announcement-1', title: '', date: '', content: '', priority: 'normal' }],
+  events: [{ id: 'event-1', title: '', date: '', time: '', image: '', description: '' }],
+  ministries: [{ id: 'ministry-1', name: '', description: '', icon: '' }],
+  gallery: [{ id: 'gallery-1', url: '', caption: '' }],
+  blogs: [{ id: 'blog-1', title: '', content: '', image_url: '', video_url: '', expires_in_days: '' }],
+  services: [{ id: 'service-item-1', title: '', description: '', date: '', time: '', location_link: '', category: 'program_sunday' }],
 };
 
 export function ChurchesPage() {
@@ -69,6 +71,34 @@ export function ChurchesPage() {
   // Details states
   const [selectedChurchId, setSelectedChurchId] = useState('');
   const [detailsJson, setDetailsJson] = useState('{}');
+
+  const addCreateProfileItem = (key: 'serviceTimes' | 'announcements' | 'events' | 'ministries' | 'gallery' | 'blogs' | 'services', item: any) => {
+    setCreateProfile((prev) => ({
+      ...prev,
+      [key]: [...((prev[key] as any[]) || []), item],
+    }));
+  };
+
+  const updateCreateProfileArrayItem = (
+    key: 'serviceTimes' | 'announcements' | 'events' | 'ministries' | 'gallery' | 'blogs' | 'services',
+    index: number,
+    updater: (item: any) => any
+  ) => {
+    setCreateProfile((prev) => ({
+      ...prev,
+      [key]: ((prev[key] as any[]) || []).map((item, itemIndex) => (itemIndex === index ? updater(item) : item)),
+    }));
+  };
+
+  const removeCreateProfileArrayItem = (
+    key: 'serviceTimes' | 'announcements' | 'events' | 'ministries' | 'gallery' | 'blogs' | 'services',
+    index: number
+  ) => {
+    setCreateProfile((prev) => ({
+      ...prev,
+      [key]: ((prev[key] as any[]) || []).filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
 
   const getDetailsObject = (): Record<string, any> | null => {
     try {
@@ -172,12 +202,20 @@ export function ChurchesPage() {
           region_id: regionIdToUse,
           location_link: locationLink || createProfile.location_link || undefined,
           hero_image: createProfile.heroImage || undefined,
+          mapUrl: createProfile.mapUrl || undefined,
+          location: createProfile.location || undefined,
+          address: createProfile.address || undefined,
+          phone: createProfile.phone || undefined,
+          email: createProfile.email || undefined,
+          description: createProfile.description || undefined,
           pastor: createProfile.pastor,
-          serviceTimes: createProfile.serviceTimes.filter((s) => s.day || s.time || s.type),
-          announcements: createProfile.announcements.filter((a) => a.title || a.date || a.content),
-          events: createProfile.events.filter((ev) => ev.title || ev.date || ev.time || ev.description),
-          ministries: createProfile.ministries.filter((m) => m.name || m.description || m.icon),
-          gallery: createProfile.gallery.filter((g) => g.url || g.caption),
+          serviceTimes: createProfile.serviceTimes.filter((s: any) => s.day || s.time || s.type),
+          announcements: createProfile.announcements.filter((a: any) => a.title || a.date || a.content),
+          events: createProfile.events.filter((ev: any) => ev.title || ev.date || ev.time || ev.description),
+          ministries: createProfile.ministries.filter((m: any) => m.name || m.description || m.icon),
+          gallery: createProfile.gallery.filter((g: any) => g.url || g.caption),
+          blogs: (createProfile.blogs || []).filter((b: any) => b.title || b.content || b.image_url || b.video_url),
+          services: (createProfile.services || []).filter((s: any) => s.title || s.description || s.date || s.time || s.location_link),
         };
 
         await churchAPI.updateChurch(createdId, profilePayload);
@@ -264,8 +302,22 @@ export function ChurchesPage() {
       if (url) {
         if (target === 'hero') setCreateProfile(p => ({ ...p, heroImage: url }));
         if (target === 'pastor') setCreateProfile(p => ({ ...p, pastor: { ...p.pastor, image: url } }));
-        if (target === 'event') setCreateProfile(p => ({ ...p, events: [{ ...(p.events[0] || {}), image: url, id: `e-${Date.now()}` }] }));
-        if (target === 'gallery') setCreateProfile(p => ({ ...p, gallery: [{ ...(p.gallery[0] || {}), url, id: `g-${Date.now()}`, caption: 'Uploaded photo' }] }));
+        if (target === 'event') {
+          setCreateProfile((p) => ({
+            ...p,
+            events: p.events.length
+              ? p.events.map((event, index) => (index === p.events.length - 1 ? { ...event, image: url, id: event.id || `e-${Date.now()}` } : event))
+              : [{ id: `e-${Date.now()}`, title: '', date: '', time: '', image: url, description: '' }],
+          }));
+        }
+        if (target === 'gallery') {
+          setCreateProfile((p) => ({
+            ...p,
+            gallery: p.gallery.length
+              ? p.gallery.map((item, index) => (index === p.gallery.length - 1 ? { ...item, url, id: item.id || `g-${Date.now()}`, caption: item.caption || 'Uploaded photo' } : item))
+              : [{ id: `g-${Date.now()}`, url, caption: 'Uploaded photo' }],
+          }));
+        }
         toast.success('Image uploaded successfully.');
       }
     } catch {
@@ -373,7 +425,6 @@ export function ChurchesPage() {
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Pastor Details */}
                   <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
                     <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><ChurchIcon className="w-4 h-4" /> Pastor Personnel</h3>
                     <div className="space-y-3">
@@ -386,60 +437,262 @@ export function ChurchesPage() {
                         <Input placeholder="Lead / Associate Pastor" value={createProfile.pastor.role} onChange={(e) => setCreateProfile(p => ({ ...p, pastor: { ...p.pastor, role: e.target.value } }))} className="border border-input" />
                       </div>
                       <div>
+                        <Label className="text-xs">Biography</Label>
+                        <Textarea rows={3} placeholder="Short pastor bio" value={createProfile.pastor.bio} onChange={(e) => setCreateProfile(p => ({ ...p, pastor: { ...p.pastor, bio: e.target.value } }))} className="border border-input" />
+                      </div>
+                      <div>
                         <Label className="text-xs">Personnel Image</Label>
                         <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'pastor')} className="border border-input text-xs" />
                       </div>
                     </div>
                   </div>
 
-                  {/* Announcements */}
                   <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
-                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Megaphone className="w-4 h-4" /> Primary Announcement</h3>
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Megaphone className="w-4 h-4" /> Announcements</h3>
                     <div className="space-y-3">
-                      <div>
-                        <Label className="text-xs">Bulletin Title</Label>
-                        <Input placeholder="Notice header" value={createProfile.announcements[0]?.title || ''} onChange={(e) => setCreateProfile(p => ({ ...p, announcements: [{ ...(p.announcements[0] || {}), title: e.target.value, id: `a-${Date.now()}` }] }))} className="border border-input" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Bulletin Text Content</Label>
-                        <Textarea placeholder="Provide notice breakdown details..." rows={2} value={createProfile.announcements[0]?.content || ''} onChange={(e) => setCreateProfile(p => ({ ...p, announcements: [{ ...(p.announcements[0] || {}), content: e.target.value }] }))} className="border border-input" />
-                      </div>
+                      {createProfile.announcements.map((announcement, index) => (
+                        <div key={announcement.id || index} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">Announcement {index + 1}</h4>
+                            {createProfile.announcements.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('announcements', index)} className="text-destructive">
+                                <Trash2 className="mr-1 h-4 w-4" /> Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-xs">Bulletin Title</Label>
+                            <Input value={announcement.title || ''} onChange={(e) => updateCreateProfileArrayItem('announcements', index, (item) => ({ ...item, title: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Bulletin Text Content</Label>
+                            <Textarea rows={2} value={announcement.content || ''} onChange={(e) => updateCreateProfileArrayItem('announcements', index, (item) => ({ ...item, content: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Date</Label>
+                            <Input type="date" value={announcement.date || ''} onChange={(e) => updateCreateProfileArrayItem('announcements', index, (item) => ({ ...item, date: e.target.value }))} className="border border-input" />
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addCreateProfileItem('announcements', { id: `a-${Date.now()}`, title: '', date: '', content: '', priority: 'normal' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add another announcement
+                      </Button>
                     </div>
                   </div>
 
-                  {/* Events */}
                   <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
-                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Calendar className="w-4 h-4" /> Key Event</h3>
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Calendar className="w-4 h-4" /> Service Times</h3>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs">Event Title</Label>
-                          <Input placeholder="Conference name" value={createProfile.events[0]?.title || ''} onChange={(e) => setCreateProfile(p => ({ ...p, events: [{ ...(p.events[0] || {}), title: e.target.value, id: `e-${Date.now()}` }] }))} className="border border-input" />
+                      {createProfile.serviceTimes.map((service, index) => (
+                        <div key={service.id || index} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">Service Time {index + 1}</h4>
+                            {createProfile.serviceTimes.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('serviceTimes', index)} className="text-destructive">
+                                <Trash2 className="mr-1 h-4 w-4" /> Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <Label className="text-xs">Day</Label>
+                              <Input value={service.day || ''} onChange={(e) => updateCreateProfileArrayItem('serviceTimes', index, (item) => ({ ...item, day: e.target.value }))} className="border border-input" />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Time</Label>
+                              <Input value={service.time || ''} onChange={(e) => updateCreateProfileArrayItem('serviceTimes', index, (item) => ({ ...item, time: e.target.value }))} className="border border-input" />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Type</Label>
+                              <Input value={service.type || ''} onChange={(e) => updateCreateProfileArrayItem('serviceTimes', index, (item) => ({ ...item, type: e.target.value }))} className="border border-input" />
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <Label className="text-xs">Date Scheduling</Label>
-                          <Input type="date" value={createProfile.events[0]?.date || ''} onChange={(e) => setCreateProfile(p => ({ ...p, events: [{ ...(p.events[0] || {}), date: e.target.value }] }))} className="border border-input" />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Event Poster Image</Label>
-                        <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'event')} className="border border-input text-xs" />
-                      </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addCreateProfileItem('serviceTimes', { id: `service-${Date.now()}`, day: '', time: '', type: '' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add another service time
+                      </Button>
                     </div>
                   </div>
 
-                  {/* Gallery */}
                   <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
-                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Image className="w-4 h-4" /> Gallery Exhibition</h3>
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Image className="w-4 h-4" /> Ministries</h3>
                     <div className="space-y-3">
-                      <div>
-                        <Label className="text-xs">Media File Upload</Label>
-                        <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'gallery')} className="border border-input text-xs" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Media Description Caption</Label>
-                        <Input placeholder="Altar view, community baptism photos..." value={createProfile.gallery[0]?.caption || ''} onChange={(e) => setCreateProfile(p => ({ ...p, gallery: [{ ...(p.gallery[0] || {}), caption: e.target.value }] }))} className="border border-input" />
-                      </div>
+                      {createProfile.ministries.map((ministry, index) => (
+                        <div key={ministry.id || index} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">Ministry {index + 1}</h4>
+                            {createProfile.ministries.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('ministries', index)} className="text-destructive">
+                                <Trash2 className="mr-1 h-4 w-4" /> Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-xs">Ministry Name</Label>
+                            <Input value={ministry.name || ''} onChange={(e) => updateCreateProfileArrayItem('ministries', index, (item) => ({ ...item, name: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Description</Label>
+                            <Textarea rows={2} value={ministry.description || ''} onChange={(e) => updateCreateProfileArrayItem('ministries', index, (item) => ({ ...item, description: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Icon</Label>
+                            <Input value={ministry.icon || ''} onChange={(e) => updateCreateProfileArrayItem('ministries', index, (item) => ({ ...item, icon: e.target.value }))} className="border border-input" />
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addCreateProfileItem('ministries', { id: `ministry-${Date.now()}`, name: '', description: '', icon: '' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add another ministry
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Calendar className="w-4 h-4" /> Events</h3>
+                    <div className="space-y-3">
+                      {createProfile.events.map((event, index) => (
+                        <div key={event.id || index} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">Event {index + 1}</h4>
+                            {createProfile.events.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('events', index)} className="text-destructive">
+                                <Trash2 className="mr-1 h-4 w-4" /> Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Event Title</Label>
+                              <Input value={event.title || ''} onChange={(e) => updateCreateProfileArrayItem('events', index, (item) => ({ ...item, title: e.target.value }))} className="border border-input" />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Date</Label>
+                              <Input type="date" value={event.date || ''} onChange={(e) => updateCreateProfileArrayItem('events', index, (item) => ({ ...item, date: e.target.value }))} className="border border-input" />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Time</Label>
+                            <Input type="time" value={event.time || ''} onChange={(e) => updateCreateProfileArrayItem('events', index, (item) => ({ ...item, time: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Description</Label>
+                            <Textarea rows={2} value={event.description || ''} onChange={(e) => updateCreateProfileArrayItem('events', index, (item) => ({ ...item, description: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Image</Label>
+                            <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'event')} className="border border-input text-xs" />
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addCreateProfileItem('events', { id: `e-${Date.now()}`, title: '', date: '', time: '', image: '', description: '' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add another event
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Image className="w-4 h-4" /> Gallery</h3>
+                    <div className="space-y-3">
+                      {createProfile.gallery.map((item, index) => (
+                        <div key={item.id || index} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">Gallery Item {index + 1}</h4>
+                            {createProfile.gallery.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('gallery', index)} className="text-destructive">
+                                <Trash2 className="mr-1 h-4 w-4" /> Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-xs">Media File Upload</Label>
+                            <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'gallery')} className="border border-input text-xs" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Caption</Label>
+                            <Input value={item.caption || ''} onChange={(e) => updateCreateProfileArrayItem('gallery', index, (entry) => ({ ...entry, caption: e.target.value }))} className="border border-input" />
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addCreateProfileItem('gallery', { id: `g-${Date.now()}`, url: '', caption: '' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add another gallery item
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><ChurchIcon className="w-4 h-4" /> Blog Posts</h3>
+                    <div className="space-y-3">
+                      {createProfile.blogs.map((blog, index) => (
+                        <div key={blog.id || index} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">Blog {index + 1}</h4>
+                            {createProfile.blogs.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('blogs', index)} className="text-destructive">
+                                <Trash2 className="mr-1 h-4 w-4" /> Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-xs">Title</Label>
+                            <Input value={blog.title || ''} onChange={(e) => updateCreateProfileArrayItem('blogs', index, (entry) => ({ ...entry, title: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Content</Label>
+                            <Textarea rows={3} value={blog.content || ''} onChange={(e) => updateCreateProfileArrayItem('blogs', index, (entry) => ({ ...entry, content: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Image URL</Label>
+                            <Input value={blog.image_url || ''} onChange={(e) => updateCreateProfileArrayItem('blogs', index, (entry) => ({ ...entry, image_url: e.target.value }))} className="border border-input" />
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addCreateProfileItem('blogs', { id: `blog-${Date.now()}`, title: '', content: '', image_url: '', video_url: '', expires_in_days: '' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add another blog post
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
+                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><ChurchIcon className="w-4 h-4" /> Services</h3>
+                    <div className="space-y-3">
+                      {createProfile.services.map((service, index) => (
+                        <div key={service.id || index} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">Service {index + 1}</h4>
+                            {createProfile.services.length > 1 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('services', index)} className="text-destructive">
+                                <Trash2 className="mr-1 h-4 w-4" /> Remove
+                              </Button>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-xs">Title</Label>
+                            <Input value={service.title || ''} onChange={(e) => updateCreateProfileArrayItem('services', index, (entry) => ({ ...entry, title: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Description</Label>
+                            <Textarea rows={2} value={service.description || ''} onChange={(e) => updateCreateProfileArrayItem('services', index, (entry) => ({ ...entry, description: e.target.value }))} className="border border-input" />
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Date</Label>
+                              <Input type="date" value={service.date || ''} onChange={(e) => updateCreateProfileArrayItem('services', index, (entry) => ({ ...entry, date: e.target.value }))} className="border border-input" />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Time</Label>
+                              <Input type="time" value={service.time || ''} onChange={(e) => updateCreateProfileArrayItem('services', index, (entry) => ({ ...entry, time: e.target.value }))} className="border border-input" />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Location Link</Label>
+                            <Input value={service.location_link || ''} onChange={(e) => updateCreateProfileArrayItem('services', index, (entry) => ({ ...entry, location_link: e.target.value }))} className="border border-input" />
+                          </div>
+                        </div>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={() => addCreateProfileItem('services', { id: `service-item-${Date.now()}`, title: '', description: '', date: '', time: '', location_link: '', category: 'program_sunday' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add another service
+                      </Button>
                     </div>
                   </div>
                 </div>
