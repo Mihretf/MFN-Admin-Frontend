@@ -124,6 +124,27 @@ export function ChurchesPage() {
     setDetailsJson(JSON.stringify(draft, null, 2));
   };
 
+  const addDetailsArrayItem = (key: string, item: any) => {
+    updateDetailsObject((draft) => {
+      const current = Array.isArray(draft[key]) ? draft[key] : [];
+      draft[key] = [...current, item];
+    });
+  };
+
+  const updateDetailsArrayItem = (key: string, index: number, updater: (item: any) => any) => {
+    updateDetailsObject((draft) => {
+      const current = Array.isArray(draft[key]) ? draft[key] : [];
+      draft[key] = current.map((item, itemIndex) => (itemIndex === index ? updater(item) : item));
+    });
+  };
+
+  const removeDetailsArrayItem = (key: string, index: number) => {
+    updateDetailsObject((draft) => {
+      const current = Array.isArray(draft[key]) ? draft[key] : [];
+      draft[key] = current.filter((_, itemIndex) => itemIndex !== index);
+    });
+  };
+
   const detailsObject = getDetailsObject();
   const selectedRegionName = regions.find((r) => r.id === (selectedRegionId || userRegionId))?.name || '';
   const detailsFormDisabled = detailsObject == null;
@@ -842,92 +863,253 @@ export function ChurchesPage() {
                       </div>
 
                       <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
-                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Calendar className="w-4 h-4" /> Service Time</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <Label className="text-xs">Day</Label>
-                            <Input value={detailsObject.serviceTimes?.[0]?.day || ''} onChange={(e) => updateDetailsObject(d => { d.serviceTimes = [{ ...(d.serviceTimes?.[0] || {}), day: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Time</Label>
-                            <Input value={detailsObject.serviceTimes?.[0]?.time || ''} onChange={(e) => updateDetailsObject(d => { d.serviceTimes = [{ ...(d.serviceTimes?.[0] || {}), time: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Type</Label>
-                            <Input value={detailsObject.serviceTimes?.[0]?.type || ''} onChange={(e) => updateDetailsObject(d => { d.serviceTimes = [{ ...(d.serviceTimes?.[0] || {}), type: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
+                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Calendar className="w-4 h-4" /> Service Times</h4>
+                        <div className="space-y-3">
+                          {(detailsObject.serviceTimes || []).map((item: any, index: number) => (
+                            <div key={`${item.id || index}-service`} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold">Service Time {index + 1}</h5>
+                                {(detailsObject.serviceTimes || []).length > 1 && (
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('serviceTimes', index)} className="text-destructive">
+                                    <Trash2 className="mr-1 h-4 w-4" /> Remove
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <Label className="text-xs">Day</Label>
+                                  <Input value={item.day || ''} onChange={(e) => updateDetailsArrayItem('serviceTimes', index, (entry) => ({ ...entry, day: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Time</Label>
+                                  <Input value={item.time || ''} onChange={(e) => updateDetailsArrayItem('serviceTimes', index, (entry) => ({ ...entry, time: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Type</Label>
+                                  <Input value={item.type || ''} onChange={(e) => updateDetailsArrayItem('serviceTimes', index, (entry) => ({ ...entry, type: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => addDetailsArrayItem('serviceTimes', { day: '', time: '', type: '' })}>
+                            <Plus className="mr-2 h-4 w-4" /> Add another service time
+                          </Button>
                         </div>
                       </div>
 
                       <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
-                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Image className="w-4 h-4" /> Ministry</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <Label className="text-xs">Ministry Name</Label>
-                            <Input value={detailsObject.ministries?.[0]?.name || ''} onChange={(e) => updateDetailsObject(d => { d.ministries = [{ ...(d.ministries?.[0] || {}), name: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Ministry Icon</Label>
-                            <Input value={detailsObject.ministries?.[0]?.icon || ''} onChange={(e) => updateDetailsObject(d => { d.ministries = [{ ...(d.ministries?.[0] || {}), icon: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div className="md:col-span-3">
-                            <Label className="text-xs">Ministry Description</Label>
-                            <Textarea rows={3} value={detailsObject.ministries?.[0]?.description || ''} onChange={(e) => updateDetailsObject(d => { d.ministries = [{ ...(d.ministries?.[0] || {}), description: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
+                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Image className="w-4 h-4" /> Ministries</h4>
+                        <div className="space-y-3">
+                          {(detailsObject.ministries || []).map((item: any, index: number) => (
+                            <div key={`${item.id || index}-ministry`} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold">Ministry {index + 1}</h5>
+                                {(detailsObject.ministries || []).length > 1 && (
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('ministries', index)} className="text-destructive">
+                                    <Trash2 className="mr-1 h-4 w-4" /> Remove
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <Label className="text-xs">Ministry Name</Label>
+                                  <Input value={item.name || ''} onChange={(e) => updateDetailsArrayItem('ministries', index, (entry) => ({ ...entry, name: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Ministry Icon</Label>
+                                  <Input value={item.icon || ''} onChange={(e) => updateDetailsArrayItem('ministries', index, (entry) => ({ ...entry, icon: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div className="md:col-span-3">
+                                  <Label className="text-xs">Ministry Description</Label>
+                                  <Textarea rows={3} value={item.description || ''} onChange={(e) => updateDetailsArrayItem('ministries', index, (entry) => ({ ...entry, description: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => addDetailsArrayItem('ministries', { name: '', description: '', icon: '' })}>
+                            <Plus className="mr-2 h-4 w-4" /> Add another ministry
+                          </Button>
                         </div>
                       </div>
 
                       <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
-                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Megaphone className="w-4 h-4" /> Announcement</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Announcement Title</Label>
-                            <Input value={detailsObject.announcements?.[0]?.title || ''} onChange={(e) => updateDetailsObject(d => { d.announcements = [{ ...(d.announcements?.[0] || {}), title: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Announcement Date</Label>
-                            <Input type="date" value={detailsObject.announcements?.[0]?.date || ''} onChange={(e) => updateDetailsObject(d => { d.announcements = [{ ...(d.announcements?.[0] || {}), date: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div className="md:col-span-2">
-                            <Label className="text-xs">Announcement Content</Label>
-                            <Textarea rows={3} value={detailsObject.announcements?.[0]?.content || ''} onChange={(e) => updateDetailsObject(d => { d.announcements = [{ ...(d.announcements?.[0] || {}), content: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
+                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Megaphone className="w-4 h-4" /> Announcements</h4>
+                        <div className="space-y-3">
+                          {(detailsObject.announcements || []).map((item: any, index: number) => (
+                            <div key={`${item.id || index}-announcement`} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold">Announcement {index + 1}</h5>
+                                {(detailsObject.announcements || []).length > 1 && (
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('announcements', index)} className="text-destructive">
+                                    <Trash2 className="mr-1 h-4 w-4" /> Remove
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs">Announcement Title</Label>
+                                  <Input value={item.title || ''} onChange={(e) => updateDetailsArrayItem('announcements', index, (entry) => ({ ...entry, title: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Announcement Date</Label>
+                                  <Input type="date" value={item.date || ''} onChange={(e) => updateDetailsArrayItem('announcements', index, (entry) => ({ ...entry, date: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div className="md:col-span-2">
+                                  <Label className="text-xs">Announcement Content</Label>
+                                  <Textarea rows={3} value={item.content || ''} onChange={(e) => updateDetailsArrayItem('announcements', index, (entry) => ({ ...entry, content: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => addDetailsArrayItem('announcements', { title: '', date: '', content: '', priority: 'normal' })}>
+                            <Plus className="mr-2 h-4 w-4" /> Add another announcement
+                          </Button>
                         </div>
                       </div>
 
                       <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
-                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Calendar className="w-4 h-4" /> Event</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Event Title</Label>
-                            <Input value={detailsObject.events?.[0]?.title || ''} onChange={(e) => updateDetailsObject(d => { d.events = [{ ...(d.events?.[0] || {}), title: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Event Date</Label>
-                            <Input type="date" value={detailsObject.events?.[0]?.date || ''} onChange={(e) => updateDetailsObject(d => { d.events = [{ ...(d.events?.[0] || {}), date: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Event Time</Label>
-                            <Input type="time" value={detailsObject.events?.[0]?.time || ''} onChange={(e) => updateDetailsObject(d => { d.events = [{ ...(d.events?.[0] || {}), time: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div className="md:col-span-2">
-                            <Label className="text-xs">Event Description</Label>
-                            <Textarea rows={3} value={detailsObject.events?.[0]?.description || ''} onChange={(e) => updateDetailsObject(d => { d.events = [{ ...(d.events?.[0] || {}), description: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
+                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Calendar className="w-4 h-4" /> Events</h4>
+                        <div className="space-y-3">
+                          {(detailsObject.events || []).map((item: any, index: number) => (
+                            <div key={`${item.id || index}-event`} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold">Event {index + 1}</h5>
+                                {(detailsObject.events || []).length > 1 && (
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('events', index)} className="text-destructive">
+                                    <Trash2 className="mr-1 h-4 w-4" /> Remove
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs">Event Title</Label>
+                                  <Input value={item.title || ''} onChange={(e) => updateDetailsArrayItem('events', index, (entry) => ({ ...entry, title: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Event Date</Label>
+                                  <Input type="date" value={item.date || ''} onChange={(e) => updateDetailsArrayItem('events', index, (entry) => ({ ...entry, date: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Event Time</Label>
+                                <Input type="time" value={item.time || ''} onChange={(e) => updateDetailsArrayItem('events', index, (entry) => ({ ...entry, time: e.target.value }))} className="border border-input text-sm" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Event Description</Label>
+                                <Textarea rows={3} value={item.description || ''} onChange={(e) => updateDetailsArrayItem('events', index, (entry) => ({ ...entry, description: e.target.value }))} className="border border-input text-sm" />
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => addDetailsArrayItem('events', { title: '', date: '', time: '', image: '', description: '' })}>
+                            <Plus className="mr-2 h-4 w-4" /> Add another event
+                          </Button>
                         </div>
                       </div>
 
                       <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
                         <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Image className="w-4 h-4" /> Gallery</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Gallery Image URL</Label>
-                            <Input value={detailsObject.gallery?.[0]?.url || ''} onChange={(e) => updateDetailsObject(d => { d.gallery = [{ ...(d.gallery?.[0] || {}), url: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Gallery Caption</Label>
-                            <Input value={detailsObject.gallery?.[0]?.caption || ''} onChange={(e) => updateDetailsObject(d => { d.gallery = [{ ...(d.gallery?.[0] || {}), caption: e.target.value }]; })} className="border border-input text-sm" />
-                          </div>
+                        <div className="space-y-3">
+                          {(detailsObject.gallery || []).map((item: any, index: number) => (
+                            <div key={`${item.id || index}-gallery`} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold">Gallery Item {index + 1}</h5>
+                                {(detailsObject.gallery || []).length > 1 && (
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('gallery', index)} className="text-destructive">
+                                    <Trash2 className="mr-1 h-4 w-4" /> Remove
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs">Gallery Image URL</Label>
+                                  <Input value={item.url || ''} onChange={(e) => updateDetailsArrayItem('gallery', index, (entry) => ({ ...entry, url: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Gallery Caption</Label>
+                                  <Input value={item.caption || ''} onChange={(e) => updateDetailsArrayItem('gallery', index, (entry) => ({ ...entry, caption: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => addDetailsArrayItem('gallery', { url: '', caption: '' })}>
+                            <Plus className="mr-2 h-4 w-4" /> Add another gallery image
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
+                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><ChurchIcon className="w-4 h-4" /> Blog Posts</h4>
+                        <div className="space-y-3">
+                          {(detailsObject.blogs || []).map((item: any, index: number) => (
+                            <div key={`${item.id || index}-blog`} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold">Blog {index + 1}</h5>
+                                {(detailsObject.blogs || []).length > 1 && (
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('blogs', index)} className="text-destructive">
+                                    <Trash2 className="mr-1 h-4 w-4" /> Remove
+                                  </Button>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-xs">Title</Label>
+                                <Input value={item.title || ''} onChange={(e) => updateDetailsArrayItem('blogs', index, (entry) => ({ ...entry, title: e.target.value }))} className="border border-input text-sm" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Content</Label>
+                                <Textarea rows={3} value={item.content || ''} onChange={(e) => updateDetailsArrayItem('blogs', index, (entry) => ({ ...entry, content: e.target.value }))} className="border border-input text-sm" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Image URL</Label>
+                                <Input value={item.image_url || ''} onChange={(e) => updateDetailsArrayItem('blogs', index, (entry) => ({ ...entry, image_url: e.target.value }))} className="border border-input text-sm" />
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => addDetailsArrayItem('blogs', { title: '', content: '', image_url: '', video_url: '', expires_in_days: '' })}>
+                            <Plus className="mr-2 h-4 w-4" /> Add another blog post
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
+                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><ChurchIcon className="w-4 h-4" /> Services</h4>
+                        <div className="space-y-3">
+                          {(detailsObject.services || []).map((item: any, index: number) => (
+                            <div key={`${item.id || index}-service-item`} className="rounded-lg border border-dashed border-border p-3 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-semibold">Service {index + 1}</h5>
+                                {(detailsObject.services || []).length > 1 && (
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('services', index)} className="text-destructive">
+                                    <Trash2 className="mr-1 h-4 w-4" /> Remove
+                                  </Button>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-xs">Title</Label>
+                                <Input value={item.title || ''} onChange={(e) => updateDetailsArrayItem('services', index, (entry) => ({ ...entry, title: e.target.value }))} className="border border-input text-sm" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Description</Label>
+                                <Textarea rows={2} value={item.description || ''} onChange={(e) => updateDetailsArrayItem('services', index, (entry) => ({ ...entry, description: e.target.value }))} className="border border-input text-sm" />
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs">Date</Label>
+                                  <Input type="date" value={item.date || ''} onChange={(e) => updateDetailsArrayItem('services', index, (entry) => ({ ...entry, date: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Time</Label>
+                                  <Input type="time" value={item.time || ''} onChange={(e) => updateDetailsArrayItem('services', index, (entry) => ({ ...entry, time: e.target.value }))} className="border border-input text-sm" />
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Location Link</Label>
+                                <Input value={item.location_link || ''} onChange={(e) => updateDetailsArrayItem('services', index, (entry) => ({ ...entry, location_link: e.target.value }))} className="border border-input text-sm" />
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={() => addDetailsArrayItem('services', { title: '', description: '', date: '', time: '', location_link: '', category: 'program_sunday' })}>
+                            <Plus className="mr-2 h-4 w-4" /> Add another service
+                          </Button>
                         </div>
                       </div>
                     </div>
