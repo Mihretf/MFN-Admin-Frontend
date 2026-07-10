@@ -613,17 +613,18 @@ export function ChurchesPage() {
                   </div>
 
                   <div className="space-y-4 p-4 border border-border rounded-lg bg-background">
-                    <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Image className="w-4 h-4" /> Gallery</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-sm flex items-center gap-2 text-muted-foreground uppercase tracking-wider"><Image className="w-4 h-4" /> Gallery</h3>
+                      <span className="text-xs text-muted-foreground">Edit or delete images</span>
+                    </div>
                     <div className="space-y-3">
                       {createProfile.gallery.map((item, index) => (
                         <div key={item.id || index} className="rounded-lg border border-dashed border-border p-3 space-y-3">
                           <div className="flex items-center justify-between">
                             <h4 className="text-sm font-semibold">Gallery Item {index + 1}</h4>
-                            {createProfile.gallery.length > 1 && (
-                              <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('gallery', index)} className="text-destructive">
-                                <Trash2 className="mr-1 h-4 w-4" /> Remove
-                              </Button>
-                            )}
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeCreateProfileArrayItem('gallery', index)} className="text-destructive">
+                              <Trash2 className="mr-1 h-4 w-4" /> Delete
+                            </Button>
                           </div>
                           <div>
                             <Label className="text-xs">Media File Upload</Label>
@@ -1007,17 +1008,18 @@ export function ChurchesPage() {
                       </div>
 
                       <div className="p-4 rounded-lg border border-border bg-muted/10 space-y-4">
-                        <h4 className="font-bold text-sm text-primary flex items-center gap-2 border-b pb-2"><Image className="w-4 h-4" /> Gallery</h4>
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <h4 className="font-bold text-sm text-primary flex items-center gap-2"><Image className="w-4 h-4" /> Gallery</h4>
+                          <span className="text-xs text-muted-foreground">Edit or delete images</span>
+                        </div>
                         <div className="space-y-3">
                           {(detailsObject.gallery || []).map((item: any, index: number) => (
                             <div key={`${item.id || index}-gallery`} className="rounded-lg border border-dashed border-border p-3 space-y-3">
                               <div className="flex items-center justify-between">
                                 <h5 className="text-sm font-semibold">Gallery Item {index + 1}</h5>
-                                {(detailsObject.gallery || []).length > 1 && (
-                                  <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('gallery', index)} className="text-destructive">
-                                    <Trash2 className="mr-1 h-4 w-4" /> Remove
-                                  </Button>
-                                )}
+                                <Button type="button" variant="ghost" size="sm" onClick={() => removeDetailsArrayItem('gallery', index)} className="text-destructive">
+                                  <Trash2 className="mr-1 h-4 w-4" /> Delete
+                                </Button>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
