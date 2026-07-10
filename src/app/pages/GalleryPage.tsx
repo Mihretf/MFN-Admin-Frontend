@@ -6,10 +6,11 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { toast } from 'sonner';
-import { Image as ImageIcon, Plus, Upload, MapPin, Calendar } from 'lucide-react';
+import { Image as ImageIcon, Plus, Upload, MapPin, Calendar, Edit, Trash2 } from 'lucide-react';
 
 interface GalleryItem {
   id: string;
@@ -43,6 +44,8 @@ export function GalleryPage() {
   const [churches, setChurches] = useState<Church[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [userRegionName, setUserRegionName] = useState<string>('');
 
   // Form states
@@ -60,6 +63,13 @@ export function GalleryPage() {
   const [viewRegionId, setViewRegionId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [editingItem, setEditingItem] = useState<GalleryItem | null>(null);
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editCaption, setEditCaption] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editType, setEditType] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editLocationLink, setEditLocationLink] = useState('');
 
   useEffect(() => {
     fetchRegions();
@@ -191,7 +201,7 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
 
     setLoading(true);
     try {
-      const response = await galleryAPI.createGalleryItem({
+      await galleryAPI.createGalleryItem({
         region_id: selectedRegionId,
         image_url: imageUrl,
         caption: caption || undefined,
@@ -204,7 +214,6 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
       });
       toast.success('Gallery item added successfully!');
       
-      // Reset form
       setImageUrl('');
       setCaption('');
       setTitle('');
@@ -223,6 +232,68 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
       toast.error(error.response?.data?.message || 'Failed to add gallery item.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openEditDialog = (item: GalleryItem) => {
+    setEditingItem(item);
+    setEditImageUrl(item.image_url || '');
+    setEditCaption(item.caption || '');
+    setEditTitle(item.title || '');
+    setEditType(item.type || '');
+    setEditDescription(item.description || '');
+    setEditLocationLink(item.location_link || '');
+  };
+
+  const closeEditDialog = () => {
+    setEditingItem(null);
+    setEditImageUrl('');
+    setEditCaption('');
+    setEditTitle('');
+    setEditType('');
+    setEditDescription('');
+    setEditLocationLink('');
+  };
+
+  const handleUpdateGalleryItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+
+    setSavingEdit(true);
+    try {
+      await galleryAPI.updateGalleryItem(editingItem.id, {
+        image_url: editImageUrl || undefined,
+        caption: editCaption || undefined,
+        title: editTitle || undefined,
+        type: editType || undefined,
+        description: editDescription || undefined,
+        location_link: editLocationLink || undefined,
+      });
+      toast.success('Gallery item updated successfully!');
+      closeEditDialog();
+      fetchGallery();
+    } catch (error: any) {
+      console.error('Gallery update error:', error);
+      toast.error(error.response?.data?.message || 'Failed to update gallery item.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteGalleryItem = async (itemId: string) => {
+    const confirmed = window.confirm('Delete this gallery item?');
+    if (!confirmed) return;
+
+    setDeletingItemId(itemId);
+    try {
+      await galleryAPI.deleteGalleryItem(itemId);
+      toast.success('Gallery item deleted successfully.');
+      setGalleryItems((prev) => prev.filter((item) => item.id !== itemId));
+    } catch (error: any) {
+      console.error('Gallery delete error:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete gallery item.');
+    } finally {
+      setDeletingItemId(null);
     }
   };
 
@@ -500,6 +571,15 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
                                       {new Date(item.created_at).toLocaleDateString()}
                                     </div>
                                   )}
+                                  <div className="flex gap-2 pt-2">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => openEditDialog(item)}>
+                                      <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </Button>
+                                    <Button type="button" variant="destructive" size="sm" onClick={() => void handleDeleteGalleryItem(item.id)} disabled={deletingItemId === item.id}>
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      {deletingItemId === item.id ? 'Deleting...' : 'Delete'}
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </CardContent>
@@ -514,6 +594,64 @@ setRegions(Array.isArray(response.data) ? response.data : response.data.regions 
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!editingItem} onOpenChange={(open) => (!open ? closeEditDialog() : undefined)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Gallery Item</DialogTitle>
+            <DialogDescription>Update the gallery item details below.</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateGalleryItem} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-image-url">Image URL</Label>
+              <Input id="edit-image-url" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="https://..." />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-caption">Caption</Label>
+              <Textarea id="edit-caption" value={editCaption} onChange={(e) => setEditCaption(e.target.value)} rows={3} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title</Label>
+              <Input id="edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-type">Type</Label>
+              <Select value={editType} onValueChange={setEditType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="worship">Worship</SelectItem>
+                  <SelectItem value="youth">Youth</SelectItem>
+                  <SelectItem value="outreach">Outreach</SelectItem>
+                  <SelectItem value="fellowship">Fellowship</SelectItem>
+                  <SelectItem value="special_event">Special Event</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea id="edit-description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={3} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-location">Location Link</Label>
+              <Input id="edit-location" value={editLocationLink} onChange={(e) => setEditLocationLink(e.target.value)} placeholder="https://maps.google.com/..." />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeEditDialog}>Cancel</Button>
+              <Button type="submit" disabled={savingEdit}>{savingEdit ? 'Saving...' : 'Save Changes'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

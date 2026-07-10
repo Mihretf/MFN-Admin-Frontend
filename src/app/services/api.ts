@@ -229,6 +229,20 @@ export const galleryAPI = {
     if (params.include_expired !== undefined) query.append('include_expired', String(params.include_expired));
     return api.get(`/api/galleries?${query.toString()}`);
   },
+
+  updateGalleryItem: async (galleryItemId: string, data: Record<string, unknown>) => {
+    try {
+      return await api.put(`/api/galleries/${galleryItemId}`, data);
+    } catch (error: any) {
+      if (error?.response?.status === 404 || error?.response?.status === 405) {
+        return api.patch(`/api/galleries/${galleryItemId}`, data);
+      }
+      throw error;
+    }
+  },
+
+  deleteGalleryItem: (galleryItemId: string) =>
+    api.delete(`/api/galleries/${galleryItemId}`),
 };
 
 export default api;
