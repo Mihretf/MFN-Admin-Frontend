@@ -53,6 +53,20 @@ export const regionAPI = {
   
   getRegions: () =>
     api.get('/api/regions'),
+
+  updateRegion: async (regionId: string, name: string) => {
+    try {
+      return await api.put(`/api/regions/${regionId}`, { name });
+    } catch (error: any) {
+      if (error?.response?.status === 404 || error?.response?.status === 405) {
+        return api.patch(`/api/regions/${regionId}`, { name });
+      }
+      throw error;
+    }
+  },
+
+  deleteRegion: (regionId: string) =>
+    api.delete(`/api/regions/${regionId}`),
 };
 
 // Church API
