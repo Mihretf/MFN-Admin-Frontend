@@ -313,7 +313,7 @@ export function ChurchesPage() {
     return response?.data?.asset?.secure_url || null;
   };
 
-  const handleCreateImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: string) => {
+  const handleCreateImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: string, index?: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -335,10 +335,28 @@ export function ChurchesPage() {
           setCreateProfile((p) => ({
             ...p,
             gallery: p.gallery.length
-              ? p.gallery.map((item, index) => (index === p.gallery.length - 1 ? { ...item, url, id: item.id || `g-${Date.now()}`, caption: item.caption || 'Uploaded photo' } : item))
+              ? p.gallery.map((item, itemIndex) => (itemIndex === (index ?? p.gallery.length - 1) ? { ...item, url, id: item.id || `g-${Date.now()}`, caption: item.caption || 'Uploaded photo' } : item))
               : [{ id: `g-${Date.now()}`, url, caption: 'Uploaded photo' }],
           }));
         }
+        toast.success('Image uploaded successfully.');
+      }
+    } catch {
+      toast.error('Image upload failed.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleDetailsGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const url = await uploadImageFile(file);
+      if (url) {
+        updateDetailsArrayItem('gallery', index, (item) => ({ ...item, url }));
         toast.success('Image uploaded successfully.');
       }
     } catch {
@@ -628,7 +646,7 @@ export function ChurchesPage() {
                           </div>
                           <div>
                             <Label className="text-xs">Media File Upload</Label>
-                            <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'gallery')} className="border border-input text-xs" />
+                            <Input type="file" accept="image/*" onChange={(e) => handleCreateImageUpload(e, 'gallery', index)} className="border border-input text-xs" />
                           </div>
                           <div>
                             <Label className="text-xs">Caption</Label>
@@ -781,13 +799,13 @@ export function ChurchesPage() {
 
       {/* POPPING SCREEN POPUP MODAL (DIALOG OVERLAY) */}
       <Dialog open={showEditProfileModal} onOpenChange={setShowEditProfileModal}>
-        <DialogContent className="sm:max-w-[700px] h-[85vh] flex flex-col p-0 bg-background border border-border shadow-2xl rounded-xl">
-          <div className="p-6 border-b border-border bg-muted/20">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-none h-[calc(100vh-2rem)] max-h-none flex flex-col p-0 bg-background border border-border shadow-2xl rounded-xl">
+          <div className="p-4 sm:p-6 border-b border-border bg-muted/20">
             <DialogTitle className="text-2xl font-bold flex items-center gap-2"><Edit className="w-6 h-6 text-primary" /> Edit Section</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground mt-1"></DialogDescription>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="space-y-6 pr-2">
               <Tabs defaultValue="form" className="w-full">
                 <TabsList className="grid w-full grid-cols-1 max-w-xs mb-4">
@@ -797,7 +815,7 @@ export function ChurchesPage() {
                 <TabsContent value="form" className="space-y-4">
                   {detailsObject !== null ? (
                     <div className="space-y-6">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Location Building Name</Label>
                           <Input value={detailsObject.location || ''} onChange={(e) => updateDetailsObject(d => { d.location = e.target.value; })} className="border border-input" />
@@ -808,7 +826,7 @@ export function ChurchesPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Location Map Link</Label>
                           <Input value={detailsObject.location_link || ''} onChange={(e) => updateDetailsObject(d => { d.location_link = e.target.value; })} className="border border-input" />
@@ -819,7 +837,7 @@ export function ChurchesPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Map Embed URL</Label>
                           <Input value={detailsObject.mapUrl || ''} onChange={(e) => updateDetailsObject(d => { d.mapUrl = e.target.value; })} className="border border-input" />
@@ -830,7 +848,7 @@ export function ChurchesPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Email Address</Label>
                           <Input value={detailsObject.email || ''} onChange={(e) => updateDetailsObject(d => { d.email = e.target.value; })} className="border border-input" />
@@ -1027,6 +1045,10 @@ export function ChurchesPage() {
                                   <Input value={item.url || ''} onChange={(e) => updateDetailsArrayItem('gallery', index, (entry) => ({ ...entry, url: e.target.value }))} className="border border-input text-sm" />
                                 </div>
                                 <div>
+                                  <Label className="text-xs">Media File Upload</Label>
+                                  <Input type="file" accept="image/*" disabled={uploadingImage} onChange={(e) => handleDetailsGalleryImageUpload(e, index)} className="border border-input text-xs" />
+                                </div>
+                                <div>
                                   <Label className="text-xs">Gallery Caption</Label>
                                   <Input value={item.caption || ''} onChange={(e) => updateDetailsArrayItem('gallery', index, (entry) => ({ ...entry, caption: e.target.value }))} className="border border-input text-sm" />
                                 </div>
@@ -1125,7 +1147,7 @@ export function ChurchesPage() {
             </div>
           </div>
 
-          <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-3 rounded-b-xl">
+          <div className="p-3 sm:p-4 border-t border-border bg-muted/30 flex justify-end gap-3 rounded-b-xl">
             <Button variant="outline" onClick={() => setShowEditProfileModal(false)} className="border border-input hover:bg-accent">Exit</Button>
             <Button onClick={handleSaveDetails} disabled={savingDetails} className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-6 flex items-center gap-2">
               {savingDetails ? 'Saving Modifications...' : <> <Save className="w-4 h-4" /> Save </>}
