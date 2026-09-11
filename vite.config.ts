@@ -19,7 +19,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api_proxy': {
-        target: 'https://missionfornationbackend.onrender.com',
+        target: 'https://api.mfni.church',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api_proxy/, ''),
         configure: (proxy) => {
