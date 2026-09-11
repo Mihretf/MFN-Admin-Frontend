@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api_proxy/:path*",
+      "destination": "https://api.mfni.church/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -1,9 +1,7 @@
 import axios from 'axios';
 
-// Deployed backend base URL (no /api suffix here)
-export const API_BASE_URL = import.meta.env.DEV
-  ? '/api_proxy'
-  : 'https://api.mfni.church';
+// Use the local/Vercel proxy so the browser does not call the API cross-origin.
+export const API_BASE_URL = '/api_proxy';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
