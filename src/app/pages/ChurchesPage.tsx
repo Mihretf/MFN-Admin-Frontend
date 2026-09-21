@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { churchAPI, regionAPI, uploadAPI } from '../services/api';
 import { useAppSelector } from '../store/hooks';
 import { Button } from '../components/ui/button';
@@ -50,6 +51,8 @@ const emptyChurchProfile = {
 };
 
 export function ChurchesPage() {
+  const navigate = useNavigate();
+  const { churchId: editChurchId } = useParams<{ churchId: string }>();
   const user = useAppSelector((state) => state.auth.user);
   const isSuperAdmin = user?.role === 'super' || user?.role === 'super_admin';
   const userRegionId = user?.region_id || (user as any)?.regionId || (user as any)?.region?.id || '';
@@ -158,6 +161,22 @@ export function ChurchesPage() {
       fetchChurches();
     }
   }, [viewRegionId]);
+
+  useEffect(() => {
+    if (!editChurchId) return;
+
+    setSelectedChurchId(editChurchId);
+    setShowEditProfileModal(true);
+    churchAPI.getChurchById(editChurchId)
+      .then((response) => {
+        const church = response?.data?.church || response?.data;
+        setDetailsJson(JSON.stringify(church, null, 2));
+      })
+      .catch(() => {
+        toast.error('Failed to load church details.');
+        navigate('/dashboard/churches');
+      });
+  }, [editChurchId, navigate]);
 
   const fetchRegions = async () => {
     try {
@@ -276,15 +295,7 @@ export function ChurchesPage() {
 
   const handleOpenEditModal = async (churchId: string) => {
     if (!churchId) return;
-    setSelectedChurchId(churchId);
-    try {
-      const response = await churchAPI.getChurchById(churchId);
-      const church = response?.data?.church || response?.data;
-      setDetailsJson(JSON.stringify(church, null, 2));
-      setShowEditProfileModal(true);
-    } catch (error: any) {
-      toast.error('Failed to load church details.');
-    }
+    navigate(`/dashboard/churches/${churchId}/edit`);
   };
 
   const handleSaveDetails = async () => {
@@ -295,6 +306,7 @@ export function ChurchesPage() {
       await churchAPI.updateChurch(selectedChurchId, payload);
       toast.success('Church profile updated successfully.');
       setShowEditProfileModal(false);
+      navigate('/dashboard/churches');
       fetchChurches();
     } catch {
       toast.error('Invalid JSON structure.');
@@ -798,8 +810,10 @@ export function ChurchesPage() {
       </Tabs>
 
       {/* POPPING SCREEN POPUP MODAL (DIALOG OVERLAY) */}
-      <Dialog open={showEditProfileModal} onOpenChange={setShowEditProfileModal}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-none h-[calc(100vh-2rem)] max-h-none flex flex-col p-0 bg-background border border-border shadow-2xl rounded-xl">
+      <Dialog open={showEditProfileModal || Boolean(editChurchId)} onOpenChange={(open) => {
+        if (!open) navigate('/dashboard/churches');
+      }}>
+        <DialogContent className="fixed inset-0 z-50 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col rounded-none border-0 p-0 bg-background shadow-none">
           <div className="p-4 sm:p-6 border-b border-border bg-muted/20">
             <DialogTitle className="text-2xl font-bold flex items-center gap-2"><Edit className="w-6 h-6 text-primary" /> Edit Section</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground mt-1"></DialogDescription>

@@ -89,6 +89,10 @@ export const router = createBrowserRouter([
         element: <ChurchesPage />,
       },
       {
+        path: 'churches/:churchId/edit',
+        element: <ChurchesPage />,
+      },
+      {
         path: 'gallery',
         element: <GalleryPage />,
       },
