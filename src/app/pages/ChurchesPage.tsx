@@ -829,6 +829,11 @@ export function ChurchesPage() {
                 <TabsContent value="form" className="space-y-4">
                   {detailsObject !== null ? (
                     <div className="space-y-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Church Name</Label>
+                        <Input value={detailsObject.name || ''} onChange={(e) => updateDetailsObject(d => { d.name = e.target.value; })} className="border border-input" />
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Location Building Name</Label>
